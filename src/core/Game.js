@@ -142,11 +142,13 @@ export class Game {
   }
   boostLeft(kind) { return Math.max(0, (this.boosts?.[kind] ?? 0) - this.time); }
   /** Multiplicador de velocidad de Mela (⚡ turbo). */
-  speedMult() { return this.boostLeft('speed') > 0 ? 1.35 : 1; }
-  /** Multiplicador de lo que pagan clientes y camión: granja × Contabilidad × 🏷️ promo. */
+  speedMult() {
+    return (this.boostLeft('speed') > 0 ? 1.35 : 1) * (this.boostLeft('love') > 0 ? 1.25 : 1);
+  }
+  /** Multiplicador de lo que pagan clientes y camión: granja × Contabilidad × 🏷️ promo × 💕 enamorada. */
   saleMult() {
     const acc = 1 + 0.05 * (this.world.upgrades?.accounting ?? 0);
-    return this.incomeMult * acc * (this.boostLeft('sales') > 0 ? 1.25 : 1);
+    return this.incomeMult * acc * (this.boostLeft('sales') > 0 ? 1.25 : 1) * (this.boostLeft('love') > 0 ? 1.3 : 1);
   }
 
   /** Bus de eventos simple (harvest, produce, sell, truck, earn, unlock) → misiones. */
@@ -213,7 +215,7 @@ export class Game {
 
     this.fx.update(dt);
     this.hud.update(dt);
-    this.hud.setBoosts(this.boostLeft('speed'), this.boostLeft('sales'));
+    this.hud.setBoosts(this.boostLeft('speed'), this.boostLeft('sales'), this.boostLeft('love'));
     this.updateCamera(dt);
 
     this.saveTimer -= dt;

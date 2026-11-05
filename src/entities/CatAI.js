@@ -6,6 +6,7 @@ import { createCat } from '../models/Models.js';
 import { rand, pick, lerpAngle, clamp } from '../utils.js';
 
 export const CATS = {
+  // Pitanga es macho: frac de pelo largo, ojos verde claro, collar con chapita naranja
   pitanga: { name: 'Pitanga', look: { pattern: 'tuxedo', eyes: '#c8ecd0', collar: '#3d6fa8', tag: '#f2a33a', longHair: true }, spot: 'top', voice: 1.6 },
   odin: { name: 'Odin', look: { pattern: 'white', eyes: '#6fc8ff', collar: '#e2483d', tag: '#ffd23f' }, spot: 'floor', voice: 1.3 },
 };

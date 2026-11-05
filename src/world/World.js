@@ -135,6 +135,9 @@ export class World {
       { id: 'matias', price: 250, label: 'Administrador Matías', icon: '👨‍💼', pos: V(19.5, 1.4), requires: ['cashier'],
         apply: (i) => this.hireMatias(i) },
       { id: 'cow', price: 180, label: 'Vacas', icon: '🐄', pos: V(19, -2), requires: ['cashier'], apply: (i) => this.buildBarn(i) },
+      // Camionero: carga solo los pedidos del camión (caro, porque el camión rinde mucho)
+      { id: 'trucker', price: 1500, label: 'Camionero Ramón', icon: '🚛', pos: V(-14.6, 9.4), requires: ['truck', 'cow'],
+        apply: worker({ role: 'trucker', name: 'Ramón', position: V(-14.6, 9.4) }) },
       { id: 'carrier', price: 150, label: 'Repartidor Lucho', icon: '🧺', pos: V(2, -0.8), requires: ['cow'],
         apply: worker({ role: 'carrier', name: 'Lucho', position: V(2, -0.8), sources: () => [this.coop, this.barn], shop: () => this.shop }) },
       { id: 'tractor', price: 260, label: 'Tractor', icon: '🚜', pos: V(-15.5, 0.5), requires: ['cow'], apply: (i) => this.buildTractor(i) },
@@ -392,7 +395,7 @@ export class World {
       position: binPos.clone().setY(0.1), type: 'corn', cols: 3, rows: 4, max: 36, spacing: [0.55, 0.3],
     });
     this.crateZone = new TransferZone(this.game, {
-      position: binPos.clone().add(V(0, 1.75)), mode: 'pickup', target: this.crate, roles: ['player'],
+      position: binPos.clone().add(V(0, 1.75)), mode: 'pickup', target: this.crate, roles: ['player', 'trucker'],
     });
     this.tractor = new Tractor(this.game, { field: this.field, crate: this.crate, instant });
     if (!instant) this.game.fx.popIn(bin);

@@ -76,6 +76,19 @@ export class PlayerController {
     this.root.rotation.y = this.yaw;
 
     this.character.animate(dt, sp / CONFIG.player.speed, { carryFront: this.stack.count > 0 });
+
+    // 💋 Beso con Matías: si está quieta lo mira y se inclina; si el jugador la mueve, sigue caminando.
+    if ((this.kissUntil ?? 0) > this.game.time && this.kissTarget) {
+      if (sp < 0.3) {
+        const t = this.kissTarget;
+        this.yaw = lerpAngle(this.yaw, Math.atan2(t.x - this.position.x, t.z - this.position.z), 1 - Math.exp(-dt * 12));
+        this.root.rotation.y = this.yaw;
+        this.character.body.rotation.x = 0.16;
+        this.character.head.rotation.x = 0.22;
+      }
+    } else {
+      this.character.head.rotation.x = 0;
+    }
     this.stack.update(dt, this.velocity.x, this.velocity.z, this.yaw);
 
     // Cartel "MAX" sobre la pila cuando está llena (+ sonido al llenarse)

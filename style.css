@@ -56,6 +56,31 @@ html, body {
   animation: pulse 1s ease-in-out infinite;
 }
 
+/* Botón de beso: sólo aparece cuando Matías lo pide (abajo a la derecha, cómodo para el pulgar) */
+#kiss-btn {
+  display: none;
+  position: fixed;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(110px, calc(env(safe-area-inset-bottom) + 96px));
+  width: 84px; height: 84px;
+  border-radius: 50%;
+  border: 4px solid #ffffff;
+  background: radial-gradient(circle at 35% 30%, #ff9ec4, #ff4f81);
+  box-shadow: 0 6px 0 #c2185b, 0 10px 24px rgba(255, 79, 129, 0.55);
+  font-size: 40px;
+  z-index: 30;
+  cursor: pointer;
+  touch-action: manipulation;
+  animation: heartbeat 0.9s ease-in-out infinite;
+}
+#kiss-btn.show { display: block; }
+#kiss-btn span {
+  position: absolute; left: 50%; bottom: -26px; transform: translateX(-50%);
+  font-size: 15px; font-weight: 900; color: #fff;
+  background: rgba(20, 24, 28, 0.6); padding: 1px 8px; border-radius: 999px;
+}
+@keyframes heartbeat { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.15); } 30% { transform: scale(1); } 45% { transform: scale(1.1); } }
+
 /* ---------- Tarjeta de misión ---------- */
 #mission {
   position: fixed;

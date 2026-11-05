@@ -25,6 +25,7 @@ export const LOOKS = {
   mateo: { shirt: '#ff9f1c', pants: '#2b3a55', hair: '#6b3e26', hat: 'cap', hatColor: '#3fa7e0', voice: 0.95 },
   ana: { shirt: '#e8304a', overalls: '#3f72c0', hair: '#b5651d', hairStyle: 'ponytail', tie: '#ffffff', voice: 1.2 },
   toto: { shirt: '#7bcc45', overalls: '#264653', hair: '#cfcfcf', hat: 'cap', hatColor: '#e2483d', voice: 0.8 },
+  ramon: { shirt: '#d9473b', pants: '#2f4f7f', hair: '#4a3020', hat: 'cap', hatColor: '#ffffff', shoes: '#3a2a1e', voice: 0.6 },
 };
 
 export class WorkerAI {
@@ -47,7 +48,8 @@ export class WorkerAI {
     this.getSources = sources;
     this.getShop = shop;
 
-    const look = LOOKS[name.toLowerCase()] ?? LOOKS.tito;
+    const key = name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); // "Ramón" → "ramon"
+    const look = LOOKS[key] ?? LOOKS.tito;
     this.character = new Character(look);
     this.root = this.character.root;
     this.root.position.copy(position);
@@ -59,14 +61,17 @@ export class WorkerAI {
     this.bubbleY = 2.35;
 
     this.position = this.root.position;
-    this.baseCapacity = role === 'carrier' ? 8 : 6;
+    this.baseCapacity = role === 'trucker' ? 10 : role === 'carrier' ? 8 : 6;
     this.stack = new StackManager(game, this.character.frontAnchor, this.baseCapacity);
     this.stack.onLand = () => game.audio.play('pop', { pos: this.position, volume: 0.5 });
     this.canHarvest = role === 'farmer';
     this.harvestTypes = role === 'farmer' ? [field().type] : null;
     this.applyBonus();
 
-    this.state = role === 'farmer' ? 'gather' : 'pickup';
+    this.state = role === 'farmer' ? 'gather' : role === 'trucker' ? 'load' : 'pickup';
+    this.job = null;
+    this.noProgress = 0;
+    this.lastCount = 0;
     this.target = this.position.clone();
     this.retarget = 0;
     this.wait = 0;
@@ -90,8 +95,94 @@ export class WorkerAI {
   update(dt) {
     if (this.role === 'farmer') this.thinkFarmer(dt);
     else if (this.role === 'carrier') this.thinkCarrier(dt);
+    else if (this.role === 'trucker') this.thinkTrucker(dt);
     else this.target.copy(this.getShop().cashierSpot);
     this.moveTowards(dt);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Camionero: lee el pedido del camión, junta lo que falta y lo carga.
+  // ---------------------------------------------------------------------------
+  thinkTrucker(dt) {
+    const truck = this.world.truck;
+    const waiting = truck && truck.state === 'waiting' && truck.doneTimer < 0;
+    const remaining = (t) => (truck.order[t] ?? 0) - (truck.delivered[t] ?? 0);
+
+    // Progreso de carga (si no junta nada por un rato, entrega lo que tiene)
+    if (this.stack.count !== this.lastCount) { this.lastCount = this.stack.count; this.noProgress = 0; } else this.noProgress += dt;
+
+    if (this.state === 'deliver') {
+      this.canHarvest = false;
+      this.target.copy(truck?.dropZone.position ?? this.idleSpot());
+      if (this.stack.count === 0) { this.state = 'load'; this.job = null; return; }
+      const useful = waiting && this.stack.items.some((e) => e.landed && truck.canAccept(e.type));
+      if (!useful && this.noProgress > 4) this.discard(); // lo que sobra va al depósito
+      return;
+    }
+
+    // state 'load'
+    if (!waiting) {
+      this.canHarvest = false;
+      if (this.stack.count > 0) this.state = 'deliver';
+      else this.target.copy(this.idleSpot());
+      return;
+    }
+    if (!this.job || remaining(this.job.type) - this.stack.count <= 0) {
+      this.job = this.pickJob(truck);
+      this.noProgress = 0;
+    }
+    if (!this.job) {
+      this.canHarvest = false;
+      if (this.stack.count > 0) this.state = 'deliver'; else this.target.copy(this.idleSpot());
+      return;
+    }
+    const { type } = this.job;
+    // Lleva exactamente lo que falta (sin pasarse de su capacidad)
+    const cap = this.baseCapacity + (this.world.workerBonus || 0) * 2;
+    this.stack.capacity = Math.max(this.stack.count, Math.min(cap, remaining(type)));
+    if (this.stack.isFull || (this.stack.count > 0 && this.noProgress > 3)) { this.state = 'deliver'; return; }
+
+    if (this.job.field) {
+      this.canHarvest = true;
+      this.harvestTypes = [type];
+      const plant = this.job.field.nearestGrown(this.position);
+      if (plant) this.target.copy(plant.position);
+      else this.target.set(this.job.field.center.x + this.job.field.halfW + 0.8, 0, this.job.field.center.z);
+    } else {
+      this.canHarvest = false;
+      this.target.copy(this.job.unit.pickupZone.position);
+    }
+    if (this.noProgress > 8) this.job = null; // probar con otro producto
+  }
+
+  /** Elige el próximo producto del pedido y de dónde sacarlo (pallet, cajón del tractor o campo). */
+  pickJob(truck) {
+    const w = this.world;
+    const units = [w.coop, w.barn, w.sheep, ...w.processors()].filter(Boolean);
+    if (w.crate) units.unshift({ outputType: 'corn', outputPile: w.crate, pickupZone: w.crateZone });
+    const types = Object.keys(truck.order).filter((t) => truck.order[t] - (truck.delivered[t] ?? 0) - this.stack.countOf(t) > 0);
+    let fallback = null;
+    for (const t of types) {
+      const unit = units.find((u) => u.outputType === t && u.outputPile.hasLanded());
+      if (unit) return { type: t, unit };
+      const field = w.fields().find((f) => f.type === t && f.nearestGrown(this.position));
+      if (field) return { type: t, field };
+      fallback ??= units.find((u) => u.outputType === t) ? { type: t, unit: units.find((u) => u.outputType === t) }
+        : w.fields().find((f) => f.type === t) ? { type: t, field: w.fields().find((f) => f.type === t) } : null;
+    }
+    return fallback;
+  }
+
+  idleSpot() { return new THREE.Vector3(-14.2, 0, 11.4); }
+
+  /** Lo que ya no sirve para el pedido se "guarda en el depósito" (desaparece). */
+  discard() {
+    for (const e of [...this.stack.items]) {
+      if (!e.landed) continue;
+      const t = this.stack.take(e.type);
+      if (t) this.game.fx.popOut(t.mesh);
+    }
+    this.noProgress = 0;
   }
 
   thinkFarmer(dt) {

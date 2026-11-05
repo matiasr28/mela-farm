@@ -14,7 +14,8 @@ export class TransferZone {
     this.mode = mode;
     this.types = types;
     this.target = target;
-    this.roles = roles;
+    // El camionero puede recoger de cualquier pallet donde recogen los repartidores
+    this.roles = mode === 'pickup' && roles.includes('carrier') ? [...roles, 'trucker'] : roles;
     this.radius = radius;
     this.interval = interval;
     this.position = position.clone();

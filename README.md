@@ -50,6 +50,11 @@ sin build command y con output directory `.`. O bien, desde la terminal: `npx ve
   le da una ayuda: ⚡ turbo de velocidad, 🏷️ promo (+25% ventas) o 💵 propina.
   Mejoras: 💼 **Cobranza** (junta solo la plata de las pilas, +3%/nivel), 📊 **Contabilidad**
   (+5% ventas/nivel) y 🤝 **Ayuda** (viene más seguido y sus ayudas rinden más).
+- **Mela y Matías son pareja:** cada tanto se dicen cosas tiernas. Cada 5–8 minutos Matías pide
+  un beso: aparece el botón 💋 (abajo a la derecha, o tecla K) durante 8 s. Si lo tocás se dan un
+  beso (sin frenar el juego) y Mela queda 💕 **Enamorada** 30 s: +25% velocidad y +30% ventas.
+- **Camionero Ramón** ($1500): lee el pedido del camión, junta lo que falta (pallets, cajón del
+  tractor o cosechando) y lo carga solo.
 - **Misiones:** objetivos cortos con premio (tarjeta arriba a la izquierda).
 - **Charlas:** clientes, empleados y Mela conversan con globitos y "voces"; además dan pistas
   (ej. "¿Hay alguien en la caja?").

@@ -31,7 +31,7 @@ export class Truck {
     this.dropZone = new TransferZone(game, {
       position: new THREE.Vector3(parkPos.x - 1.0, 0, parkPos.z - 3.4), mode: 'drop',
       types: ['corn', 'egg', 'milk', 'wheat', 'pumpkin', 'bread', 'jam', 'cake', 'wool', 'scarf', 'strawberry', 'icecream', 'apple', 'juice'],
-      target: this, roles: ['player'],
+      target: this, roles: ['player', 'trucker'],
     });
     this.cashPile = new CashPile(game, { position: new THREE.Vector3(parkPos.x + 2.4, 0, parkPos.z - 3.4) });
 

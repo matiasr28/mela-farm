@@ -10,11 +10,31 @@ export class Hud {
 
   setHint(html) { if (this.hint) this.hint.innerHTML = html; }
 
-  /** Chips de boosts activos (⚡ turbo / 🏷️ promo) con cuenta regresiva. */
-  setBoosts(speed, sales) {
+  /**
+   * Botón 💋: visible sólo mientras Matías pide un beso (con cuenta regresiva).
+   * También responde a la tecla K en PC.
+   */
+  showKiss(show, onTap = null, seconds = 0) {
+    if (!this.kissBtn) {
+      this.kissBtn = document.getElementById('kiss-btn');
+      this.kissTime = document.getElementById('kiss-time');
+      const fire = (e) => { e?.stopPropagation(); if (this.kissShown) this.onKiss?.(); };
+      this.kissBtn?.addEventListener('pointerdown', (e) => e.stopPropagation());
+      this.kissBtn?.addEventListener('click', fire);
+      window.addEventListener('keydown', (e) => { if (e.code === 'KeyK') fire(); });
+    }
+    this.kissShown = show;
+    this.onKiss = onTap;
+    this.kissBtn?.classList.toggle('show', show);
+    if (show && this.kissTime) this.kissTime.textContent = `${Math.ceil(seconds)}s`;
+  }
+
+  /** Chips de boosts activos (⚡ turbo / 🏷️ promo / 💕 enamorada) con cuenta regresiva. */
+  setBoosts(speed, sales, love = 0) {
     this.boostEl ??= document.getElementById('boosts');
     if (!this.boostEl) return;
     const parts = [];
+    if (love > 0) parts.push(`💕 Enamorada ${Math.ceil(love)}s`);
     if (speed > 0) parts.push(`⚡ ${Math.ceil(speed)}s`);
     if (sales > 0) parts.push(`🏷️ +25% ${Math.ceil(sales)}s`);
     const text = parts.join('  ');

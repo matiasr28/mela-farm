@@ -57,6 +57,10 @@ const WORKER_TO_MELA = {
     ['¡Voy volando con la mercadería!', '¡Dale, {a}, que hay fila!'],
     ['¡Las estanterías no se llenan solas!', 'Gracias por la mano, {a}.'],
   ],
+  trucker: [
+    ['¡Mela! El camión sale completito 🚚', '¡Genial, {a}!'],
+    ['Otro pedido despachado, jefa 📦', '¡Sos un crack, {a}!'],
+  ],
   cashier: [
     ['Mela, ¡hoy vendimos un montón!', '¡Sos una genia, {a}!'],
     ['La gente pregunta por vos, Mela.', '¡Mandales saludos!'],
@@ -224,6 +228,7 @@ export class Chatter {
     const builders = [
       () => this.hintConvo(), () => this.queueConvo(), () => this.cashierConvo(),
       () => this.workerMelaConvo(), () => this.workerWorkerConvo(), () => this.catConvo(),
+      () => this.coupleConvo(),
     ];
     // Las pistas tienen prioridad; el resto se elige al azar
     const first = builders.shift();
@@ -312,7 +317,7 @@ export class Chatter {
 }
 
 const CAT_GREETS = {
-  Pitanga: ['¡Hola, Pitanga! 😺', '¡Qué peluda está Pitanga!', 'Pitanga, ¡qué linda chapita!', '¿Me dejás acariciarte, Pitanga?'],
+  Pitanga: ['¡Hola, Pitanga! 😺', '¡Qué peludo está Pitanga!', 'Pitanga, ¡qué lindo collar!', '¿Me dejás acariciarte, Pitanga?'],
   Odin: ['¡Hola, Odin! 😺', '¡Odin, qué ojos celestes!', '¡Qué lindo gatito blanco!', 'Odin, ¿cuidás la tienda?'],
 };
 const MEOWS = ['Miau 💕', 'Miau~', 'Prrrr...', '¡Miau!', 'Mrrr 😺'];
@@ -331,6 +336,38 @@ Chatter.prototype.catConvo = function catConvo() {
     if (c) return [[c, pick(CAT_GREETS[cat.name] ?? ['¡Hola, gatito!'])], [cat, pick(MEOWS)]];
   }
   return null;
+};
+
+// ---------------------------------------------------------------------------
+// Mela y Matías son pareja: cada tanto se dicen cosas tiernas (M = Matías, P = Mela)
+// ---------------------------------------------------------------------------
+const COUPLE_CHATS = [
+  [['M', '¿Cómo va mi granjera favorita? 🌻'], ['P', '¡Mejor ahora que llegaste, amor!']],
+  [['M', 'Te guardé el último mate 🧉'], ['P', '¡Sos un sol, Mati!']],
+  [['P', '¿Ya te dije que sos el mejor administrador?'], ['M', 'Porque tengo la mejor jefa 💕']],
+  [['P', 'Mati, ¿me querés?'], ['M', '¡Más que a los números! 📊💕']],
+  [['M', 'Estás hermosa con olor a campo 😄'], ['P', '¡Jaja, qué tonto! Te quiero 💕']],
+  [['P', 'Hoy a la noche, ¿pizza y peli?'], ['M', '¡Hecho! Yo invito 🍕']],
+  [['M', 'Mela, ¿sabés qué es lo mejor de esta granja?'], ['P', '¿Las gallinas?'], ['M', '¡Vos! 💕']],
+];
+const TEASES = ['¡Uy, los tortolitos! 😏', '¡Qué lindos! 🥰', '¡Qué empalagosos! 🍯😂', '¡Ay, el amor! 💕'];
+
+Chatter.prototype.coupleConvo = function coupleConvo() {
+  const m = this.game.world.matias;
+  const p = this.game.player;
+  if (!m || !this.free(m) || !this.free(p) || Math.random() > 0.5) return null;
+  if (!['roam', 'collect'].includes(m.state) || distXZ2(m.position, p.position) > 6 * 6) return null;
+  const lines = pick(COUPLE_CHATS).map(([who, text]) => [who === 'M' ? m : p, text]);
+  // A veces algún empleado cercano los carga
+  const witness = this.game.world.workers.find((w) => this.free(w) && distXZ2(w.position, p.position) < 7 * 7);
+  if (witness && Math.random() < 0.4) lines.push([witness, pick(TEASES)]);
+  for (let i = 0; i < 3; i++) {
+    this.game.fx.tween(0.4 + i * 0.5, null, () => {
+      const mid = m.position.clone().lerp(p.position, 0.5).setY(2.2 + Math.random() * 0.3);
+      this.game.fx.floatText('💕', mid);
+    });
+  }
+  return lines;
 };
 
 function fill(text, a, b) {

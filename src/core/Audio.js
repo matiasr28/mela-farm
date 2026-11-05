@@ -39,7 +39,7 @@ const MELODY = [
 const MIN_GAP = {
   pop: 0.035, drop: 0.04, harvest: 0.05, coin: 0.028, tick: 0.07, cluck: 0.45, moo: 3,
   full: 0.8, horn: 1, register: 0.2, unlock: 0.3, happy: 0.25, step: 0.2,
-  talk: 0.15, oven: 0.5, mission: 0.5, levelup: 1, baa: 3, meow: 0.6,
+  talk: 0.15, oven: 0.5, mission: 0.5, levelup: 1, baa: 3, meow: 0.6, kiss: 0.5,
 };
 
 /** Recetas de cada efecto: (engine, tiempo, volumen, pitch) */
@@ -72,6 +72,12 @@ const SFX = {
     }
   },
   moo: (a, t, v) => a.tone(t, 170, 0.9, { type: 'sawtooth', vol: 0.11 * v, slide: 115, filter: 700, attack: 0.12 }),
+  // "Muak": chasquido corto + tonito que sube
+  kiss: (a, t, v) => {
+    a.noise(t, 0.05, { vol: 0.25 * v, freq: 2500, q: 2 });
+    a.tone(t + 0.03, 500, 0.12, { vol: 0.14 * v, slide: 1100 });
+    a.tone(t + 0.2, 1046, 0.35, { type: 'triangle', vol: 0.1 * v, slide: 1568 });
+  },
   meow: (a, t, v, p) => {
     const f = 620 * p;
     a.tone(t, f, 0.12, { type: 'triangle', vol: 0.12 * v, slide: f * 1.35, filter: 2600, attack: 0.03 });
