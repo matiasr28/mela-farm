@@ -85,12 +85,14 @@ export class World {
       this.unlocked.push(id);
       def.apply(true);
     }
+    // Las mejoras por nivel se conservan entre granjas: se guardan siempre y se
+    // aplican apenas existe lo que necesitan (ver applyPendingUpgrades).
+    this.applied = {};
     for (const def of this.defs.filter((d) => d.repeat)) {
       const lvl = Math.min(ups[def.id] ?? 0, this.maxLevel(def));
-      if (!lvl || !this.requirementsMet(def)) continue;
-      for (let i = 0; i < lvl; i++) def.apply(true);
-      this.upgrades[def.id] = lvl;
+      if (lvl) this.upgrades[def.id] = lvl;
     }
+    this.applyPendingUpgrades(true);
     this.refreshZones(true);
   }
 
@@ -141,6 +143,7 @@ export class World {
       { id: 'chickens', repeat: true, max: 6, growth: 1.5, price: 90, label: 'Gallinas', icon: '🐔', pos: V(7.6, -3.4), requires: ['farmer'],
         apply: (i) => { this.coop.addAnimals(1, i); this.coop.speedMult += 0.3; } },
       { id: 'cows', repeat: true, max: 5, growth: 1.5, price: 220, label: 'Vacas', icon: '🐮', pos: V(24.2, -2), requires: ['cow'],
+        needs: () => !!this.barn, // se aplica recién cuando hay establo
         apply: (i) => { this.barn.addAnimals(1, i); this.barn.speedMult += 0.35; } },
       { id: 'grow', repeat: true, max: 6, growth: 1.6, price: 300, label: 'Fertilizante', icon: '🌱', pos: V(-15.5, 0.5), requires: ['tractor'],
         apply: () => { this.growBonus++; this.fields().forEach((f) => { f.growMult = 1 + 0.25 * this.growBonus; }); } },
@@ -197,14 +200,28 @@ export class World {
     }
   }
 
+  /** Aplica los niveles de mejora comprados que todavía no tienen efecto (p. ej. tras mudarse de granja). */
+  applyPendingUpgrades(instant) {
+    for (const def of this.defs) {
+      if (!def.repeat || (def.needs && !def.needs())) continue;
+      const target = this.upgrades[def.id] ?? 0;
+      while ((this.applied[def.id] ?? 0) < target) {
+        def.apply(instant);
+        this.applied[def.id] = (this.applied[def.id] ?? 0) + 1;
+      }
+    }
+  }
+
   unlock(def) {
     this.zones.delete(def.id);
     if (def.repeat) {
       this.upgrades[def.id] = (this.upgrades[def.id] ?? 0) + 1;
     } else {
       this.unlocked.push(def.id);
+      def.apply(false);
     }
-    def.apply(false);
+    // Mejoras nuevas, o heredadas que ahora tienen dónde aplicarse (ej. Vacas al comprar el establo)
+    this.applyPendingUpgrades(false);
     this.game.fx.floatText(`¡${def.label}!`, def.pos.clone().setY(2), '#ffe066');
     this.game.emit('unlock', { id: def.id });
     this.game.chatter?.playerSays('unlock');
@@ -216,7 +233,7 @@ export class World {
   prestige() {
     const next = this.farmLevel + 1;
     this.game.saveSystem.save({
-      version: 2, farmLevel: next, money: 0, unlocked: [], upgrades: {},
+      version: 2, farmLevel: next, money: 0, unlocked: [], upgrades: this.upgrades, // las mejoras se conservan
       missions: this.game.missions?.serialize(),
     });
     this.resetting = true;

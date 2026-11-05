@@ -34,7 +34,8 @@ sin build command y con output directory `.`. O bien, desde la terminal: `npx ve
 - **Zona Norte:** 🌾 trigo → 🍞 Panadería → Almacén (con su cajera y repartidor).
 - **Granja 2+:** 🎃 Zapallar → 🍯 Dulcería, y 🎂 Pastelería (🥚 + 🥛 + 🌾 → torta).
 - **Nueva granja (prestigio):** al comprar todo aparece la baldosa "Granja N+1". Se reinicia
-  la granja con **ingresos ×1,5 acumulables**, precios +30% y mejoras con más niveles.
+  la granja con **ingresos ×1,5 acumulables** y precios +30%. **Las mejoras por nivel se conservan**
+  (las que dependen de un edificio se aplican solas al volver a comprarlo) y su tope sube +2 niveles.
 - **Misiones:** objetivos cortos con premio (tarjeta arriba a la izquierda).
 - **Charlas:** clientes, empleados y Mela conversan con globitos y "voces"; además dan pistas
   (ej. "¿Hay alguien en la caja?").
