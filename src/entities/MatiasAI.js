@@ -9,9 +9,10 @@ import { Character } from './Character.js';
 import { createItem } from '../models/Models.js';
 import { rand, pick, distXZ2, lerpAngle } from '../utils.js';
 
+// Look de Matías: pelo negro con rulos, piel clara, buzo oscuro y la tabla en la mano.
 const LOOK = {
-  shirt: '#cfe3f7', pants: '#2f3b52', hair: '#3a2a1e', hairStyle: 'short', skin: '#f2c299',
-  shoes: '#2b2b2b', glasses: true, prop: 'clipboard',
+  shirt: '#23262d', pants: '#3a3f4b', hair: '#17110e', hairStyle: 'curly', skin: '#f3d2b8',
+  shoes: '#2b2b2b', prop: 'clipboard',
 };
 
 // Charlas con Mela (M = Matías, P = Mela). El tipo define la ayuda que da al final.

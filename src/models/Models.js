@@ -485,6 +485,25 @@ export function createCharacterRig({
     head.add(back);
   } else if (hairStyle === 'bun') {
     head.add(sphere(0.095, hair, 0, 0.25, -0.07));
+  } else if (hairStyle === 'curly') {
+    // Rulos: bolitas repartidas en espiral sobre la parte de arriba, costados y nuca,
+    // dejando libre la cara; algunos rulos caen sobre la frente.
+    const n = 46;
+    for (let i = 0; i < n; i++) {
+      const y = 1 - (i / (n - 1)) * 1.45;            // de arriba hacia la nuca
+      const r = Math.sqrt(Math.max(0, 1 - y * y));
+      const a = i * 2.39996;                          // ángulo áureo
+      const x = Math.cos(a) * r;
+      const z = Math.sin(a) * r;
+      if (z > 0.35 && y < 0.45) continue;             // no tapar la cara
+      const s = 0.06 + ((i * 7) % 5) * 0.007;
+      head.add(sphere(s, hair, x * 0.245, 0.07 + y * 0.21, z * 0.235 - 0.02, 8, 6));
+    }
+    // Rulos sobre la frente y a los costados de la cara
+    for (const [x, y, z] of [[-0.09, 0.16, 0.17], [0.0, 0.18, 0.18], [0.09, 0.15, 0.17], [0.16, 0.1, 0.13],
+      [-0.2, 0.0, 0.08], [0.2, 0.0, 0.08], [-0.21, -0.08, 0.0], [0.21, -0.08, 0.0]]) {
+      head.add(sphere(0.055, hair, x, y, z, 8, 6));
+    }
   }
 
   if (glasses) {
