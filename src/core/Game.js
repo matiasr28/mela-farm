@@ -154,7 +154,7 @@ export class Game {
         <div class="lv-farm">🏡 Granja ${level}</div>
         <ul>
           <li>💰 Ingresos <b>x${mult}</b></li>
-          <li>🎒 Conservás todas tus mejoras</li>
+          <li>🎒 Conservás tus mejoras, corrales, campos y talleres</li>
           ${extra}
           <li>📋 Las misiones siguen</li>
         </ul>

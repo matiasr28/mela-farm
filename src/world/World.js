@@ -108,16 +108,16 @@ export class World {
         apply: worker({ role: 'farmer', name: 'Tito', position: V(-5.5, -1.5), field: () => this.field, unit: () => this.coop }) },
       { id: 'cashier', price: 90, label: 'Cajera Pili', icon: '🧑‍💼', pos: V(12.5, 0.5), requires: ['farmer'],
         apply: worker({ role: 'cashier', name: 'Pili', position: V(12.5, 0.5), shop: () => this.shop }) },
-      { id: 'cow', price: 180, label: 'Vacas', icon: '🐄', pos: V(19, -2), requires: ['cashier'], apply: (i) => this.buildBarn(i) },
+      { id: 'cow', keep: true, price: 180, label: 'Vacas', icon: '🐄', pos: V(19, -2), requires: ['cashier'], apply: (i) => this.buildBarn(i) },
       { id: 'carrier', price: 150, label: 'Repartidor Lucho', icon: '🧺', pos: V(2, -0.8), requires: ['cow'],
         apply: worker({ role: 'carrier', name: 'Lucho', position: V(2, -0.8), sources: () => [this.coop, this.barn], shop: () => this.shop }) },
-      { id: 'tractor', price: 260, label: 'Tractor', icon: '🚜', pos: V(-15.5, 0.5), requires: ['cow'], apply: (i) => this.buildTractor(i) },
+      { id: 'tractor', keep: true, price: 260, label: 'Tractor', icon: '🚜', pos: V(-15.5, 0.5), requires: ['cow'], apply: (i) => this.buildTractor(i) },
       { id: 'farmer2', price: 240, label: 'Granjera Rosa', icon: '👩‍🌾', pos: V(-5.5, -1.5), requires: ['farmer', 'cow'],
         apply: worker({ role: 'farmer', name: 'Rosa', position: V(-5.5, -1.5), field: () => this.field, unit: () => this.barn }) },
 
       // ----- Zona Norte: trigo, panadería y almacén -----
-      { id: 'north', price: 500, label: 'Zona Norte', icon: '🌾', pos: V(13, -14.6), requires: ['cow'], apply: (i) => this.openNorth(i) },
-      { id: 'bakery', price: 350, label: 'Panadería', icon: '🍞', pos: V(-1, -21.2), requires: ['north'], apply: (i) => this.buildBakery(i) },
+      { id: 'north', keep: true, price: 500, label: 'Zona Norte', icon: '🌾', pos: V(13, -14.6), requires: ['cow'], apply: (i) => this.openNorth(i) },
+      { id: 'bakery', keep: true, price: 350, label: 'Panadería', icon: '🍞', pos: V(-1, -21.2), requires: ['north'], apply: (i) => this.buildBakery(i) },
       { id: 'shop2', price: 300, label: 'Almacén', icon: '🏪', pos: V(12, -19.5), requires: ['bakery'], apply: (i) => this.buildShop2(i) },
       { id: 'farmer3', price: 420, label: 'Granjero Beto', icon: '👨‍🌾', pos: V(-6, -19), requires: ['bakery'],
         apply: worker({ role: 'farmer', name: 'Beto', position: V(-6, -19), field: () => this.wheatField, unit: () => this.bakery }) },
@@ -127,9 +127,9 @@ export class World {
         apply: worker({ role: 'carrier', name: 'Nico', position: V(5, -19.5), sources: () => [this.bakery, this.sweets, this.pastry], shop: () => this.shop2 }) },
 
       // ----- Granja 2 en adelante: zapallos, dulcería y pastelería -----
-      { id: 'pumpkins', price: 700, label: 'Zapallar', icon: '🎃', pos: V(-12, -32), requires: ['north'], minLevel: 2, apply: (i) => this.buildPumpkins(i) },
-      { id: 'sweets', price: 650, label: 'Dulcería', icon: '🍯', pos: V(-1, -30.2), requires: ['pumpkins'], minLevel: 2, apply: (i) => this.buildSweets(i) },
-      { id: 'pastry', price: 1100, label: 'Pastelería', icon: '🎂', pos: V(10, -30.2), requires: ['shop2', 'cow'], minLevel: 2, apply: (i) => this.buildPastry(i) },
+      { id: 'pumpkins', keep: true, price: 700, label: 'Zapallar', icon: '🎃', pos: V(-12, -32), requires: ['north'], minLevel: 2, apply: (i) => this.buildPumpkins(i) },
+      { id: 'sweets', keep: true, price: 650, label: 'Dulcería', icon: '🍯', pos: V(-1, -30.2), requires: ['pumpkins'], minLevel: 2, apply: (i) => this.buildSweets(i) },
+      { id: 'pastry', keep: true, price: 1100, label: 'Pastelería', icon: '🎂', pos: V(10, -30.2), requires: ['shop2', 'cow'], minLevel: 2, apply: (i) => this.buildPastry(i) },
       { id: 'farmer4', price: 800, label: 'Granjera Juana', icon: '👩‍🌾', pos: V(-6, -28.5), requires: ['sweets'], minLevel: 2,
         apply: worker({ role: 'farmer', name: 'Juana', position: V(-6, -28.5), field: () => this.pumpkinField, unit: () => this.sweets }) },
 
@@ -230,10 +230,15 @@ export class World {
     this.game.fx.tween(0.7, null, () => this.refreshZones());
   }
 
+  /**
+   * Mudanza a la granja siguiente. Se conserva lo que produce (corrales, campos, talleres:
+   * defs con `keep`) y todas las mejoras; se reinician la plata, el camión, el Almacén y los empleados.
+   */
   prestige() {
     const next = this.farmLevel + 1;
+    const kept = this.unlocked.filter((id) => this.defs.find((d) => d.id === id)?.keep);
     this.game.saveSystem.save({
-      version: 2, farmLevel: next, money: 0, unlocked: [], upgrades: this.upgrades, // las mejoras se conservan
+      version: 2, farmLevel: next, money: 0, unlocked: kept, upgrades: this.upgrades,
       missions: this.game.missions?.serialize(),
     });
     this.resetting = true;
