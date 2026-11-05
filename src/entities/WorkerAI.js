@@ -20,6 +20,11 @@ export const LOOKS = {
   juana: { shirt: '#a29bfe', overalls: '#3f6fb5', hair: '#2b1d0e', hairStyle: 'ponytail', tie: '#ffd23f', voice: 1.2 },
   nico: { shirt: '#90be6d', pants: '#3d405b', hair: '#b5651d', hat: 'cap', hatColor: '#e8503f', voice: 0.95 },
   sol: { shirt: '#ffd23f', pants: '#264653', hair: '#111111', hairStyle: 'long', skin: '#c68642', voice: 1.3 },
+  pancho: { shirt: '#5a8f3c', overalls: '#7a5230', hair: '#3d2b1f', hat: 'straw', hatColor: '#e9c46a', voice: 0.7 },
+  lola: { shirt: '#ff8fab', pants: '#3d405b', hair: '#f7d55c', hairStyle: 'bun', voice: 1.3 },
+  mateo: { shirt: '#ff9f1c', pants: '#2b3a55', hair: '#6b3e26', hat: 'cap', hatColor: '#3fa7e0', voice: 0.95 },
+  ana: { shirt: '#e8304a', overalls: '#3f72c0', hair: '#b5651d', hairStyle: 'ponytail', tie: '#ffffff', voice: 1.2 },
+  toto: { shirt: '#7bcc45', overalls: '#264653', hair: '#cfcfcf', hat: 'cap', hatColor: '#e2483d', voice: 0.8 },
 };
 
 export class WorkerAI {

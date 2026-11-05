@@ -29,6 +29,13 @@ const ALMACEN_CHATS = [
   ['Pan casero, como el de antes.', 'Para el mate de la tarde, ideal.'],
   ['Vine desde el pueblo de al lado.', '¡Yo también! Todos hablan de Mela.'],
 ];
+const FERIA_CHATS = [
+  ['¡Qué linda esta bufanda!', 'Tejida con lana de la granja.'],
+  ['¿Probaste el helado de frutilla?', '¡Es el mejor del mundo! 🍦'],
+  ['Un jugo de manzana, por favor.', '¡Recién exprimido!'],
+  ['¡Esta feria está buenísima!', 'Mela pensó en todo.'],
+  ['¿Las ovejas tienen nombre?', '¡Seguro que Mela se los puso!'],
+];
 const CASHIER_CHATS = [
   ['¡Hola! ¿Qué te llevás?', 'Lo de siempre, por favor.'],
   ['¡Bienvenido a lo de Mela!', '¡Gracias! Siempre tan amables.'],
@@ -225,7 +232,7 @@ export class Chatter {
     }
   }
 
-  shops() { return [this.game.world.shop, this.game.world.shop2].filter(Boolean); }
+  shops() { return [this.game.world.shop, this.game.world.shop2, this.game.world.shop3].filter(Boolean); }
   near(t) { return distXZ2(t.root.position, this.game.player.position) < 16 * 16; }
 
   /** Pistas: nadie en la caja / falta un producto. */
@@ -250,7 +257,8 @@ export class Chatter {
         const a = q[i];
         const b = q[i + 1];
         if (a.atSlot && b.atSlot && this.free(a) && this.free(b) && this.near(a)) {
-          const pool = shop === this.game.world.shop2 ? ALMACEN_CHATS : QUEUE_CHATS;
+          const w = this.game.world;
+          const pool = shop === w.shop2 ? ALMACEN_CHATS : shop === w.shop3 ? FERIA_CHATS : QUEUE_CHATS;
           const [l1, l2] = pick(pool);
           return [[a, l1], [b, l2]];
         }

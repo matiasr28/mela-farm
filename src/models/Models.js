@@ -195,6 +195,76 @@ function createCakeItem() {
   return g;
 }
 
+function createWoolItem() {
+  // Ovillo de lana
+  const g = new THREE.Group();
+  const ball = sphere(0.15, '#f4efe6', 0, 0.15, 0, 14, 10);
+  g.add(ball);
+  for (let i = 0; i < 3; i++) {
+    const ring = new THREE.Mesh(geo(`torus${i}`, () => new THREE.TorusGeometry(0.15, 0.012, 6, 20)), mat('#d9cfc0'));
+    ring.position.y = 0.15;
+    ring.rotation.set(i * 1.1, i * 0.7, 0);
+    g.add(ring);
+  }
+  return g;
+}
+
+function createScarfItem() {
+  // Bufanda doblada a rayas
+  const g = new THREE.Group();
+  ['#e2483d', '#ffffff', '#e2483d', '#ffffff', '#e2483d'].forEach((c, i) => {
+    g.add(box(0.1, 0.12, 0.34, c, -0.2 + i * 0.1, 0.06, 0));
+  });
+  g.add(box(0.5, 0.06, 0.12, '#e2483d', 0, 0.14, 0.12));
+  return g;
+}
+
+function createStrawberryItem() {
+  // Canastita de frutillas
+  const g = new THREE.Group();
+  g.add(box(0.44, 0.12, 0.34, '#d9a066', 0, 0.06, 0));
+  for (const [x, z] of [[-0.12, -0.07], [0, -0.07], [0.12, -0.07], [-0.06, 0.07], [0.08, 0.07]]) {
+    const b = sphere(0.07, '#e8304a', x, 0.15, z, 10, 8);
+    b.scale.y = 1.2;
+    g.add(b);
+    g.add(cone(0.04, 0.04, 6, '#4f9e2c', x, 0.24, z));
+  }
+  return g;
+}
+
+function createIceCreamItem() {
+  const g = new THREE.Group();
+  const c = cone(0.1, 0.24, 12, '#e2b36b', 0, 0.12, 0);
+  c.rotation.x = Math.PI;
+  g.add(c);
+  g.add(sphere(0.11, '#ff9ec4', 0, 0.27, 0, 12, 10));
+  g.add(sphere(0.09, '#fff3d6', 0, 0.37, 0, 12, 10));
+  g.add(sphere(0.03, '#e2483d', 0, 0.46, 0, 8, 6));
+  return g;
+}
+
+function createAppleItem() {
+  const g = new THREE.Group();
+  const a = sphere(0.14, '#e2483d', 0, 0.14, 0, 14, 10);
+  a.scale.set(1, 0.9, 1);
+  g.add(a);
+  g.add(cyl(0.012, 0.012, 0.08, 6, '#6b4226', 0, 0.29, 0));
+  const leaf = sphere(0.04, '#4f9e2c', 0.04, 0.3, 0, 8, 6);
+  leaf.scale.set(1.4, 0.4, 0.8);
+  g.add(leaf);
+  return g;
+}
+
+function createJuiceItem() {
+  // Cajita de jugo con sorbete
+  const g = new THREE.Group();
+  g.add(box(0.2, 0.3, 0.14, '#7bcc45', 0, 0.15, 0));
+  g.add(box(0.205, 0.1, 0.145, '#ffffff', 0, 0.15, 0));
+  g.add(sphere(0.035, '#e2483d', 0, 0.15, 0.075, 8, 6));
+  g.add(cyl(0.012, 0.012, 0.12, 6, '#ff9ec4', 0.05, 0.34, 0));
+  return g;
+}
+
 /** Catálogo de ítems: alto al apilar, precio base de venta y emoji para la UI. */
 export const ITEMS = {
   corn: { height: 0.22, price: 2, emoji: '🌽', name: 'maíz', create: createCornItem },
@@ -205,6 +275,12 @@ export const ITEMS = {
   bread: { height: 0.21, price: 8, emoji: '🍞', name: 'panes', create: createBreadItem },
   jam: { height: 0.3, price: 12, emoji: '🍯', name: 'dulces', create: createJamItem },
   cake: { height: 0.32, price: 25, emoji: '🎂', name: 'tortas', create: createCakeItem },
+  wool: { height: 0.3, price: 4, emoji: '🧶', name: 'lana', create: createWoolItem },
+  scarf: { height: 0.2, price: 20, emoji: '🧣', name: 'bufandas', create: createScarfItem },
+  strawberry: { height: 0.27, price: 3, emoji: '🍓', name: 'frutillas', create: createStrawberryItem },
+  icecream: { height: 0.48, price: 30, emoji: '🍦', name: 'helados', create: createIceCreamItem },
+  apple: { height: 0.28, price: 3, emoji: '🍎', name: 'manzanas', create: createAppleItem },
+  juice: { height: 0.3, price: 15, emoji: '🧃', name: 'jugos', create: createJuiceItem },
   cash: { height: 0.11, price: 1, emoji: '💵', name: 'plata', create: createCashItem },
 };
 
@@ -275,6 +351,37 @@ export function createPumpkinPlant() {
   pumpkin.position.set(0.05, 0, 0.12);
   g.add(pumpkin);
   return { group: g, cob: pumpkin };
+}
+
+export function createStrawberryPlant() {
+  const g = new THREE.Group();
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    const leaf = sphere(0.14, i % 2 ? '#3f8f2a' : '#57ad3a', Math.cos(a) * 0.18, 0.12, Math.sin(a) * 0.18);
+    leaf.scale.set(1, 0.4, 1);
+    g.add(leaf);
+  }
+  const berries = new THREE.Group();
+  for (const [x, z] of [[0.08, 0.12], [-0.12, 0.05], [0.02, -0.14], [0.15, -0.05]]) {
+    const b = sphere(0.065, '#e8304a', x, 0.14, z, 10, 8);
+    b.scale.y = 1.2;
+    berries.add(b);
+  }
+  g.add(berries);
+  return { group: g, cob: berries };
+}
+
+export function createAppleTree() {
+  const g = new THREE.Group();
+  g.add(cyl(0.1, 0.14, 0.9, 8, '#8b5a2b', 0, 0.45, 0));
+  g.add(sphere(0.55, '#4aa63c', 0, 1.15, 0));
+  g.add(sphere(0.4, '#57b947', 0.25, 1.4, 0.1));
+  const apples = new THREE.Group();
+  for (const [x, y, z] of [[0.4, 1.0, 0.3], [-0.35, 1.2, 0.35], [0.1, 1.5, 0.42], [0.45, 1.35, -0.2], [-0.4, 0.95, -0.25]]) {
+    apples.add(sphere(0.09, '#e2483d', x, y, z, 10, 8));
+  }
+  g.add(apples);
+  return { group: g, cob: apples };
 }
 
 // =====================================================================
@@ -453,6 +560,108 @@ export function createCow() {
   }
   body.add(box(0.06, 0.5, 0.06, C.dark, 0, 0.75, -0.68));
   return { root, body };
+}
+
+export function createSheep() {
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  root.add(body);
+  // Lana esponjosa
+  for (const [x, y, z, r] of [[0, 0.55, 0, 0.32], [0.18, 0.6, 0.2, 0.22], [-0.18, 0.6, 0.2, 0.22], [0.18, 0.6, -0.22, 0.22],
+    [-0.18, 0.6, -0.22, 0.22], [0, 0.75, 0, 0.22]]) {
+    body.add(sphere(r, '#f6f2ea', x, y, z, 12, 10));
+  }
+  body.add(sphere(0.15, '#3b3030', 0, 0.62, 0.38, 12, 10));
+  body.add(sphere(0.1, '#f6f2ea', 0, 0.76, 0.34, 10, 8));
+  for (const x of [-0.13, 0.13]) {
+    const ear = sphere(0.05, '#3b3030', x, 0.66, 0.36, 8, 6);
+    ear.scale.set(1.6, 0.6, 0.8);
+    body.add(ear);
+    body.add(sphere(0.02, '#ffffff', x * 0.45, 0.66, 0.52, 6, 4));
+  }
+  for (const [x, z] of [[-0.15, 0.18], [0.15, 0.18], [-0.15, -0.18], [0.15, -0.18]]) {
+    body.add(cyl(0.04, 0.04, 0.35, 8, '#3b3030', x, 0.17, z));
+  }
+  return { root, body };
+}
+
+// =====================================================================
+// CONSTRUCCIONES ESPECIALES (Granja 6+)
+// =====================================================================
+export function createWindmill() {
+  const g = new THREE.Group();
+  g.add(cyl(0.9, 1.3, 4.2, 12, '#f5e6c8', 0, 2.1, 0));
+  g.add(cone(1.1, 1.2, 12, '#b23a48', 0, 4.8, 0));
+  g.add(box(0.6, 1.0, 0.08, '#6b4226', 0, 0.5, 1.2));
+  const blades = new THREE.Group();
+  blades.position.set(0, 3.8, 1.15);
+  for (let i = 0; i < 4; i++) {
+    const arm = new THREE.Group();
+    arm.rotation.z = (i * Math.PI) / 2;
+    arm.add(box(0.12, 2.0, 0.06, '#8e5229', 0, 1.0, 0));
+    arm.add(box(0.5, 1.4, 0.04, '#ffffff', 0.3, 1.2, 0.02));
+    blades.add(arm);
+  }
+  g.add(blades);
+  g.userData.spin = blades;
+  return g;
+}
+
+export function createSilo() {
+  const g = new THREE.Group();
+  g.add(cyl(1.0, 1.0, 4.5, 16, '#c0392b', 0, 2.25, 0));
+  for (const y of [1, 2.2, 3.4]) g.add(cyl(1.02, 1.02, 0.1, 16, '#ffffff', 0, y, 0));
+  const dome = sphere(1.0, '#cfd6dd', 0, 4.5, 0, 16, 10);
+  dome.scale.y = 0.7;
+  g.add(dome);
+  g.add(cyl(1.2, 1.2, 3.2, 12, '#a52f24', 1.9, 1.6, 0));
+  g.add(roof(2.6, 1.0, 2.6, '#6d4c41', 1.9, 3.2, 0));
+  return g;
+}
+
+export function createGreenhouse() {
+  const g = new THREE.Group();
+  g.add(box(4, 0.2, 2.6, C.woodDark, 0, 0.1, 0));
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(3.8, 1.8, 2.4),
+    new THREE.MeshStandardMaterial({ color: '#bfe8ff', transparent: true, opacity: 0.45, roughness: 0.1 }));
+  glass.position.y = 1.1;
+  g.add(glass);
+  for (const x of [-1.9, 0, 1.9]) g.add(box(0.08, 2.2, 2.5, '#ffffff', x, 1.2, 0));
+  g.add(roof(4.1, 0.8, 2.6, '#d7f0ff', 0, 2.0, 0));
+  for (let i = 0; i < 6; i++) g.add(sphere(0.22, i % 2 ? '#ff7aa2' : '#57b947', -1.4 + i * 0.56, 0.45, 0));
+  return g;
+}
+
+export function createPond() {
+  const g = new THREE.Group();
+  const water = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 0.06, 24),
+    new THREE.MeshStandardMaterial({ color: '#4fb6e8', roughness: 0.2 }));
+  water.position.y = 0.03;
+  water.receiveShadow = true;
+  g.add(water);
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2;
+    g.add(createRock(0.45).translateX(Math.cos(a) * 2.3).translateZ(Math.sin(a) * 2.3));
+  }
+  for (const [x, z] of [[-0.6, 0.3], [0.7, -0.5]]) {
+    g.add(sphere(0.18, '#fff8e8', x, 0.18, z));
+    g.add(sphere(0.1, '#2f8f4e', x, 0.36, z + 0.12));
+    g.add(cone(0.04, 0.1, 6, '#f4a261', x, 0.34, z + 0.24).rotateX(Math.PI / 2));
+  }
+  return g;
+}
+
+export function createFountain() {
+  const g = new THREE.Group();
+  g.add(cyl(1.6, 1.7, 0.5, 20, '#cfd6dd', 0, 0.25, 0));
+  const water = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 0.05, 20),
+    new THREE.MeshStandardMaterial({ color: '#6fcff5', roughness: 0.15 }));
+  water.position.y = 0.48;
+  g.add(water);
+  g.add(cyl(0.2, 0.3, 1.4, 12, '#cfd6dd', 0, 1.1, 0));
+  g.add(cyl(0.7, 0.5, 0.2, 16, '#cfd6dd', 0, 1.8, 0));
+  g.add(sphere(0.25, '#9fe3ff', 0, 2.1, 0));
+  return g;
 }
 
 // =====================================================================

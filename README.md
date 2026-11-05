@@ -32,11 +32,17 @@ sin build command y con output directory `.`. O bien, desde la terminal: `npx ve
 - **Mejoras por niveles:** Mochila, Botas, Ayudantes, Gallinas, Vacas, Fertilizante y Hornos.
   Cada compra sube un nivel y la baldosa reaparece más cara.
 - **Zona Norte:** 🌾 trigo → 🍞 Panadería → Almacén (con su cajera y repartidor).
-- **Granja 2+:** 🎃 Zapallar → 🍯 Dulcería, y 🎂 Pastelería (🥚 + 🥛 + 🌾 → torta).
-- **Nueva granja (prestigio):** al comprar todo aparece la baldosa "Granja N+1". Se reinicia
-  la granja con **ingresos ×1,5 acumulables** y precios +30%. **Se conserva todo lo que produce**
-  (establo, tractor, Zona Norte, Panadería, Zapallar, Dulcería, Pastelería) y **todas las mejoras**
-  (su tope sube +2 niveles). Se reinician la plata, el camión, el Almacén y los empleados.
+- **Granjas:** al comprar todo aparece la baldosa "Granja N+1". **Se conserva todo**
+  (construcciones, empleados, mejoras y plata) y cada granja suma **ingresos +×0,5**,
+  mejoras con +2 niveles de tope y contenido nuevo:
+
+  | Granja | Contenido nuevo |
+  |---|---|
+  | 2 | 🎃 Zapallar → 🍯 Dulcería, 🎂 Pastelería (🥚 + 🥛 + 🌾) |
+  | 3 | 🐑 Zona Este: ovejas (🧶) → 🧣 Tejeduría, 🎪 Feria, Pancho, Lola y Mateo |
+  | 4 | 🍓 Frutillar → 🍦 Heladería (🍓 + 🥛), Ana |
+  | 5 | 🍎 Manzanar → 🧃 Juguería, Toto |
+  | 6+ | Una construcción especial por granja (Molino, Silo, Invernadero, Laguna, Fuente…): +20% ingresos |
 - **Misiones:** objetivos cortos con premio (tarjeta arriba a la izquierda).
 - **Charlas:** clientes, empleados y Mela conversan con globitos y "voces"; además dan pistas
   (ej. "¿Hay alguien en la caja?").

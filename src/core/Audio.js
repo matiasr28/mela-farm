@@ -39,7 +39,7 @@ const MELODY = [
 const MIN_GAP = {
   pop: 0.035, drop: 0.04, harvest: 0.05, coin: 0.028, tick: 0.07, cluck: 0.45, moo: 3,
   full: 0.8, horn: 1, register: 0.2, unlock: 0.3, happy: 0.25, step: 0.2,
-  talk: 0.15, oven: 0.5, mission: 0.5, levelup: 1,
+  talk: 0.15, oven: 0.5, mission: 0.5, levelup: 1, baa: 3,
 };
 
 /** Recetas de cada efecto: (engine, tiempo, volumen, pitch) */
@@ -72,6 +72,11 @@ const SFX = {
     }
   },
   moo: (a, t, v) => a.tone(t, 170, 0.9, { type: 'sawtooth', vol: 0.11 * v, slide: 115, filter: 700, attack: 0.12 }),
+  baa: (a, t, v) => {
+    for (let i = 0; i < 4; i++) {
+      a.tone(t + i * 0.09, 400 - i * 12, 0.11, { type: 'sawtooth', vol: 0.06 * v, filter: 1800, attack: 0.02 });
+    }
+  },
   full: (a, t, v) => a.tone(t, 260, 0.18, { type: 'triangle', vol: 0.25 * v, slide: 150 }),
   horn: (a, t, v) => {
     for (const d of [0, 0.28]) {

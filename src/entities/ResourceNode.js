@@ -2,7 +2,9 @@
 // temporizador; cualquier carrier con canHarvest que camine por el campo cosecha
 // automáticamente la planta madura más cercana (si su `harvestTypes` lo permite).
 import * as THREE from 'three';
-import { createCornPlant, createWheatPlant, createPumpkinPlant, createItem, mat, C } from '../models/Models.js';
+import {
+  createCornPlant, createWheatPlant, createPumpkinPlant, createStrawberryPlant, createAppleTree, createItem, mat, C,
+} from '../models/Models.js';
 import { CONFIG } from '../config.js';
 
 const _v = new THREE.Vector3();
@@ -11,6 +13,8 @@ const CROPS = {
   corn: { plant: createCornPlant, soil: C.soil, furrow: C.soilDark },
   wheat: { plant: createWheatPlant, soil: '#a5733f', furrow: '#8a5c30' },
   pumpkin: { plant: createPumpkinPlant, soil: '#7d5233', furrow: '#65411f' },
+  strawberry: { plant: createStrawberryPlant, soil: '#8a5a3a', furrow: '#6e4426' },
+  apple: { plant: createAppleTree, soil: '#7fae4a', furrow: '#6c9a3c' },
 };
 
 export class ResourceNode {

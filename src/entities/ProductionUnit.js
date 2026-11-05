@@ -2,7 +2,7 @@
 // un producto en el pallet de salida (gallinas: maíz → huevos, vacas: maíz → leche).
 import * as THREE from 'three';
 import {
-  createChicken, createCow, createCoopHouse, createBarnHouse, createTrough, createPallet,
+  createChicken, createCow, createSheep, createCoopHouse, createBarnHouse, createTrough, createPallet,
   createFenceLine, createItem, mat,
 } from '../models/Models.js';
 import { Pile } from '../systems/Pile.js';
@@ -105,7 +105,7 @@ export class ProductionUnit {
 
   addAnimals(n, instant = false) {
     for (let i = 0; i < n; i++) {
-      const a = this.animalKind === 'cow' ? createCow() : createChicken();
+      const a = this.animalKind === 'cow' ? createCow() : this.animalKind === 'sheep' ? createSheep() : createChicken();
       this.randomSpot(a.root.position);
       a.root.rotation.y = rand(0, Math.PI * 2);
       this.group.add(a.root);
@@ -116,7 +116,7 @@ export class ProductionUnit {
         wait: rand(0, 2),
         hop: 0,
         phase: rand(0, 6),
-        speed: this.animalKind === 'cow' ? 0.7 : 1.1,
+        speed: this.animalKind === 'chicken' ? 1.1 : 0.7,
       });
     }
   }
@@ -166,7 +166,8 @@ export class ProductionUnit {
     a.hop = 0.35;
     a.root.getWorldPosition(_v);
     const animalPos = _v.clone();
-    this.game.audio.play(this.animalKind === 'cow' ? 'moo' : 'cluck', { pos: animalPos });
+    const sound = { cow: 'moo', sheep: 'baa' }[this.animalKind] ?? 'cluck';
+    this.game.audio.play(sound, { pos: animalPos });
 
     // El animal "come" un ítem del comedero
     const food = this.feederPile.give();

@@ -141,11 +141,11 @@ export class Game {
   }
 
   /** Pantalla de "¡Nueva granja!" tras el prestigio; recarga con la granja nueva. */
-  showLevelUp(level) {
+  showLevelUp(level, newItems = []) {
     this.audio.play('levelup');
     this.fx.burst(this.player.position.clone().setY(1.5), 60);
-    const mult = 1 + 0.5 * (level - 1);
-    const extra = level === 2 ? '<li>🎃 Zapallar, 🍯 Dulcería y 🎂 Pastelería</li>' : '<li>✨ Mejoras con más niveles</li>';
+    const mult = Math.round((this.incomeMult + 0.5) * 100) / 100;
+    const extra = newItems.map((t) => `<li>✨ ${t}</li>`).join('');
     const el = document.createElement('div');
     el.id = 'levelup';
     el.innerHTML = `
@@ -154,9 +154,9 @@ export class Game {
         <div class="lv-farm">🏡 Granja ${level}</div>
         <ul>
           <li>💰 Ingresos <b>x${mult}</b></li>
-          <li>🎒 Conservás tus mejoras, corrales, campos y talleres</li>
+          <li>🎒 Conservás todo: construcciones, empleados, mejoras y plata</li>
           ${extra}
-          <li>📋 Las misiones siguen</li>
+          <li>🔓 Mejoras con +2 niveles de tope</li>
         </ul>
         <button id="lv-go">¡A trabajar!</button>
       </div>`;

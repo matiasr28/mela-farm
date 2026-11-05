@@ -1,8 +1,10 @@
 // World: arma la granja de Mela y maneja toda la progresión:
 //  - Desbloqueos únicos (camión, empleados, vacas, Zona Norte, talleres...) con `requires`.
 //  - Mejoras por niveles (repeat): la baldosa reaparece con precio creciente.
-//  - Granjas (prestigio): al completar todo aparece "Granja N+1"; se reinicia el progreso
-//    con ingresos multiplicados, precios un poco más altos y contenido nuevo.
+//  - Granjas: al completar todo aparece "Granja N+1". Se conserva TODO (construcciones,
+//    empleados, mejoras y plata) y cada granja suma contenido nuevo + ingresos ×1,5.
+//    Granja 2: zapallar/dulcería/pastelería · 3: Zona Este (ovejas, tejeduría, feria)
+//    4: frutillar/heladería · 5: manzanar/juguería · 6+: una construcción especial (+20%).
 import * as THREE from 'three';
 import { ResourceNode } from '../entities/ResourceNode.js';
 import { ProductionUnit } from '../entities/ProductionUnit.js';
@@ -18,12 +20,23 @@ import { TransferZone } from '../systems/TransferZone.js';
 import {
   mat, createTree, createBush, createRock, createFenceLine, createFarmhouse, createBin,
   createHayBale, createPumpkin, createSign,
+  createWindmill, createSilo, createGreenhouse, createPond, createFountain,
 } from '../models/Models.js';
 import { CONFIG } from '../config.js';
 import { seeded } from '../utils.js';
 
 const V = (x, z) => new THREE.Vector3(x, 0, z);
 const NORTH_MIN_Z = -38;
+const EAST_MAX_X = 52;
+
+/** Construcciones especiales de Granja 6 en adelante (una por granja, en orden). */
+const SPECIALS = [
+  { name: 'Molino', icon: '🌬️', model: createWindmill, pos: V(50, -20) },
+  { name: 'Silo', icon: '🏗️', model: createSilo, pos: V(29, -20) },
+  { name: 'Invernadero', icon: '🌷', model: createGreenhouse, pos: V(40, -20.5) },
+  { name: 'Laguna de patos', icon: '🦆', model: createPond, pos: V(20, -31) },
+  { name: 'Fuente', icon: '⛲', model: createFountain, pos: V(50, -35.8) },
+];
 
 /** Redondeo "lindo" de precios: 5, 10 o 50 según magnitud. */
 export const niceRound = (v) => (v < 100 ? Math.round(v / 5) * 5 : v < 1000 ? Math.round(v / 10) * 10 : Math.round(v / 50) * 50);
@@ -37,7 +50,8 @@ export class World {
 
     // ---------- Granja actual (prestigio) ----------
     this.farmLevel = saved?.farmLevel ?? 1;
-    game.incomeMult = 1 + 0.5 * (this.farmLevel - 1);
+    this.specialBonus = 0; // +0,2 por cada construcción especial
+    this.updateIncome();
     this.priceMult = Math.pow(1.3, this.farmLevel - 1);
     this.workerBonus = 0;
     this.growBonus = 0;
@@ -67,6 +81,9 @@ export class World {
     this.truck = this.barn = this.tractor = null;
     this.wheatField = this.pumpkinField = null;
     this.bakery = this.sweets = this.pastry = this.shop2 = null;
+    this.sheep = this.knit = this.icecream = this.juicery = this.shop3 = null;
+    this.berryField = this.appleField = null;
+    this.eastOpen = false;
     this.workers = [];
 
     this.defineUnlocks();
@@ -108,16 +125,16 @@ export class World {
         apply: worker({ role: 'farmer', name: 'Tito', position: V(-5.5, -1.5), field: () => this.field, unit: () => this.coop }) },
       { id: 'cashier', price: 90, label: 'Cajera Pili', icon: '🧑‍💼', pos: V(12.5, 0.5), requires: ['farmer'],
         apply: worker({ role: 'cashier', name: 'Pili', position: V(12.5, 0.5), shop: () => this.shop }) },
-      { id: 'cow', keep: true, price: 180, label: 'Vacas', icon: '🐄', pos: V(19, -2), requires: ['cashier'], apply: (i) => this.buildBarn(i) },
+      { id: 'cow', price: 180, label: 'Vacas', icon: '🐄', pos: V(19, -2), requires: ['cashier'], apply: (i) => this.buildBarn(i) },
       { id: 'carrier', price: 150, label: 'Repartidor Lucho', icon: '🧺', pos: V(2, -0.8), requires: ['cow'],
         apply: worker({ role: 'carrier', name: 'Lucho', position: V(2, -0.8), sources: () => [this.coop, this.barn], shop: () => this.shop }) },
-      { id: 'tractor', keep: true, price: 260, label: 'Tractor', icon: '🚜', pos: V(-15.5, 0.5), requires: ['cow'], apply: (i) => this.buildTractor(i) },
+      { id: 'tractor', price: 260, label: 'Tractor', icon: '🚜', pos: V(-15.5, 0.5), requires: ['cow'], apply: (i) => this.buildTractor(i) },
       { id: 'farmer2', price: 240, label: 'Granjera Rosa', icon: '👩‍🌾', pos: V(-5.5, -1.5), requires: ['farmer', 'cow'],
         apply: worker({ role: 'farmer', name: 'Rosa', position: V(-5.5, -1.5), field: () => this.field, unit: () => this.barn }) },
 
       // ----- Zona Norte: trigo, panadería y almacén -----
-      { id: 'north', keep: true, price: 500, label: 'Zona Norte', icon: '🌾', pos: V(13, -14.6), requires: ['cow'], apply: (i) => this.openNorth(i) },
-      { id: 'bakery', keep: true, price: 350, label: 'Panadería', icon: '🍞', pos: V(-1, -21.2), requires: ['north'], apply: (i) => this.buildBakery(i) },
+      { id: 'north', price: 500, label: 'Zona Norte', icon: '🌾', pos: V(13, -14.6), requires: ['cow'], apply: (i) => this.openNorth(i) },
+      { id: 'bakery', price: 350, label: 'Panadería', icon: '🍞', pos: V(-1, -21.2), requires: ['north'], apply: (i) => this.buildBakery(i) },
       { id: 'shop2', price: 300, label: 'Almacén', icon: '🏪', pos: V(12, -19.5), requires: ['bakery'], apply: (i) => this.buildShop2(i) },
       { id: 'farmer3', price: 420, label: 'Granjero Beto', icon: '👨‍🌾', pos: V(-6, -19), requires: ['bakery'],
         apply: worker({ role: 'farmer', name: 'Beto', position: V(-6, -19), field: () => this.wheatField, unit: () => this.bakery }) },
@@ -127,11 +144,38 @@ export class World {
         apply: worker({ role: 'carrier', name: 'Nico', position: V(5, -19.5), sources: () => [this.bakery, this.sweets, this.pastry], shop: () => this.shop2 }) },
 
       // ----- Granja 2 en adelante: zapallos, dulcería y pastelería -----
-      { id: 'pumpkins', keep: true, price: 700, label: 'Zapallar', icon: '🎃', pos: V(-12, -32), requires: ['north'], minLevel: 2, apply: (i) => this.buildPumpkins(i) },
-      { id: 'sweets', keep: true, price: 650, label: 'Dulcería', icon: '🍯', pos: V(-1, -30.2), requires: ['pumpkins'], minLevel: 2, apply: (i) => this.buildSweets(i) },
-      { id: 'pastry', keep: true, price: 1100, label: 'Pastelería', icon: '🎂', pos: V(10, -30.2), requires: ['shop2', 'cow'], minLevel: 2, apply: (i) => this.buildPastry(i) },
+      { id: 'pumpkins', price: 700, label: 'Zapallar', icon: '🎃', pos: V(-12, -32), requires: ['north'], minLevel: 2, apply: (i) => this.buildPumpkins(i) },
+      { id: 'sweets', price: 650, label: 'Dulcería', icon: '🍯', pos: V(-1, -30.2), requires: ['pumpkins'], minLevel: 2, apply: (i) => this.buildSweets(i) },
+      { id: 'pastry', price: 1100, label: 'Pastelería', icon: '🎂', pos: V(10, -30.2), requires: ['shop2', 'cow'], minLevel: 2, apply: (i) => this.buildPastry(i) },
       { id: 'farmer4', price: 800, label: 'Granjera Juana', icon: '👩‍🌾', pos: V(-6, -28.5), requires: ['sweets'], minLevel: 2,
         apply: worker({ role: 'farmer', name: 'Juana', position: V(-6, -28.5), field: () => this.pumpkinField, unit: () => this.sweets }) },
+
+      // ----- Granja 3: Zona Este (ovejas, tejeduría y feria) -----
+      { id: 'east', price: 1500, label: 'Zona Este', icon: '🐑', pos: V(24.6, -13), requires: ['north'], minLevel: 3, apply: (i) => this.openEast(i) },
+      { id: 'sheep', price: 1200, label: 'Ovejas', icon: '🐑', pos: V(34, -12), requires: ['east'], minLevel: 3, apply: (i) => this.buildSheep(i) },
+      { id: 'knit', price: 1400, label: 'Tejeduría', icon: '🧣', pos: V(45, -10.2), requires: ['sheep'], minLevel: 3, apply: (i) => this.buildKnit(i) },
+      { id: 'shop3', price: 1000, label: 'Feria', icon: '🎪', pos: V(44, 8.5), requires: ['knit'], minLevel: 3, apply: (i) => this.buildShop3(i) },
+      { id: 'farmer5', price: 1300, label: 'Pastor Pancho', icon: '🧑‍🌾', pos: V(40, -6.5), requires: ['sheep'], minLevel: 3,
+        apply: worker({ role: 'farmer', name: 'Pancho', position: V(40, -6.5), field: () => this.field, unit: () => this.sheep }) },
+      { id: 'cashier3', price: 1200, label: 'Cajera Lola', icon: '🧑‍💼', pos: V(48.6, 3.4), requires: ['shop3'], minLevel: 3,
+        apply: worker({ role: 'cashier', name: 'Lola', position: V(48.6, 3.4), shop: () => this.shop3 }) },
+      { id: 'carrier3', price: 1400, label: 'Repartidor Mateo', icon: '🧺', pos: V(40, 1.6), requires: ['shop3'], minLevel: 3,
+        apply: worker({ role: 'carrier', name: 'Mateo', position: V(40, 1.6), sources: () => [this.knit, this.icecream, this.juicery], shop: () => this.shop3 }) },
+
+      // ----- Granja 4: frutillar y heladería -----
+      { id: 'berries', price: 2500, label: 'Frutillar', icon: '🍓', pos: V(33, 4), requires: ['east'], minLevel: 4, apply: (i) => this.buildBerries(i) },
+      { id: 'icecream', price: 3000, label: 'Heladería', icon: '🍦', pos: V(45, -0.4), requires: ['berries', 'cow'], minLevel: 4, apply: (i) => this.buildIceCream(i) },
+      { id: 'farmer6', price: 2600, label: 'Granjera Ana', icon: '👩‍🌾', pos: V(39.6, -1.8), requires: ['icecream'], minLevel: 4,
+        apply: worker({ role: 'farmer', name: 'Ana', position: V(39.6, -1.8), field: () => this.berryField, unit: () => this.icecream }) },
+
+      // ----- Granja 5: manzanar y juguería -----
+      { id: 'apples', price: 4000, label: 'Manzanar', icon: '🍎', pos: V(34, -30), requires: ['east'], minLevel: 5, apply: (i) => this.buildApples(i) },
+      { id: 'juicery', price: 4500, label: 'Juguería', icon: '🧃', pos: V(45, -28.2), requires: ['apples'], minLevel: 5, apply: (i) => this.buildJuicery(i) },
+      { id: 'farmer7', price: 4200, label: 'Granjero Toto', icon: '👨‍🌾', pos: V(40, -24.5), requires: ['juicery'], minLevel: 5,
+        apply: worker({ role: 'farmer', name: 'Toto', position: V(40, -24.5), field: () => this.appleField, unit: () => this.juicery }) },
+
+      // ----- Granja 6 en adelante: una construcción especial por granja -----
+      ...this.specialDefs(),
 
       // ----- Mejoras por niveles -----
       { id: 'cap', repeat: true, max: 8, growth: 1.55, price: 30, label: 'Mochila', icon: '🎒', pos: V(-2, 7.5), requires: [],
@@ -152,8 +196,43 @@ export class World {
     ];
   }
 
-  fields() { return [this.field, this.wheatField, this.pumpkinField].filter(Boolean); }
-  processors() { return [this.bakery, this.sweets, this.pastry].filter(Boolean); }
+  /** Una construcción especial por cada granja desde la 6 (+20% de ingresos cada una). */
+  specialDefs() {
+    const defs = [];
+    for (let lvl = 6; lvl <= this.farmLevel; lvl++) {
+      const k = lvl - 6;
+      const s = SPECIALS[k % SPECIALS.length];
+      const round = Math.floor(k / SPECIALS.length);
+      defs.push({
+        id: `special${k}`, price: 6000 * Math.pow(1.4, k), minLevel: lvl, requires: ['east'],
+        label: round ? `${s.name} ${round + 1}` : s.name, icon: s.icon,
+        pos: round ? V(-7.4, 11.6) : s.pos,
+        apply: (i) => this.buildSpecial(s, round === 0, i),
+      });
+    }
+    return defs;
+  }
+
+  /** Texto de la pantalla "¡Nueva granja!" para la granja `level`. */
+  newContentFor(level) {
+    const items = {
+      2: ['🎃 Zapallar y 🍯 Dulcería', '🎂 Pastelería (🥚 + 🥛 + 🌾)'],
+      3: ['🐑 Zona Este con ovejas (🧶 lana)', '🧣 Tejeduría y 🎪 Feria'],
+      4: ['🍓 Frutillar', '🍦 Heladería (🍓 + 🥛)'],
+      5: ['🍎 Manzanar', '🧃 Juguería'],
+    }[level];
+    if (items) return items;
+    const s = SPECIALS[(level - 6) % SPECIALS.length];
+    return [`${s.icon} ${s.name}: +20% de ingresos`];
+  }
+
+  updateIncome() {
+    this.game.incomeMult = Math.round((1 + 0.5 * (this.farmLevel - 1) + this.specialBonus) * 100) / 100;
+    this.game.hud?.setFarm(this.farmLevel, this.game.incomeMult);
+  }
+
+  fields() { return [this.field, this.wheatField, this.pumpkinField, this.berryField, this.appleField].filter(Boolean); }
+  processors() { return [this.bakery, this.sweets, this.pastry, this.knit, this.icecream, this.juicery].filter(Boolean); }
 
   maxLevel(def) { return def.max + 2 * (this.farmLevel - 1); }
   requirementsMet(def) {
@@ -231,18 +310,17 @@ export class World {
   }
 
   /**
-   * Mudanza a la granja siguiente. Se conserva lo que produce (corrales, campos, talleres:
-   * defs con `keep`) y todas las mejoras; se reinician la plata, el camión, el Almacén y los empleados.
+   * Mudanza a la granja siguiente: se conserva TODO (construcciones, empleados, mejoras y plata);
+   * la granja nueva suma ingresos ×1,5 y contenido nuevo (ver newContentFor).
    */
   prestige() {
     const next = this.farmLevel + 1;
-    const kept = this.unlocked.filter((id) => this.defs.find((d) => d.id === id)?.keep);
     this.game.saveSystem.save({
-      version: 2, farmLevel: next, money: 0, unlocked: kept, upgrades: this.upgrades,
+      version: 2, farmLevel: next, money: this.game.money, unlocked: this.unlocked, upgrades: this.upgrades,
       missions: this.game.missions?.serialize(),
     });
     this.resetting = true;
-    this.game.showLevelUp(next);
+    this.game.showLevelUp(next, this.newContentFor(next));
   }
 
   save() {
@@ -391,6 +469,116 @@ export class World {
     if (!instant) this.game.fx.burst(V(-12, -32).setY(1), 36);
   }
 
+  // ---------- Granja 3+: Zona Este ----------
+  /** Abre la Zona Este: corre el cerco hacia la derecha y agrega tierra. */
+  openEast(instant) {
+    this.bounds.maxX = EAST_MAX_X;
+    this.eastOpen = true;
+    this.buildFence();
+    const x0 = CONFIG.bounds.maxX + 0.6;
+    const x1 = EAST_MAX_X + 0.6;
+    const z0 = this.bounds.minZ - 0.6;
+    const z1 = this.bounds.maxZ + 0.6;
+    const yard = new THREE.Mesh(
+      new THREE.PlaneGeometry(x1 - x0 + 0.02, z1 - z0),
+      new THREE.MeshStandardMaterial({ map: this.makeDirtTexture((x1 - x0) / 8, (z1 - z0) / 8), roughness: 0.95 }),
+    );
+    yard.rotation.x = -Math.PI / 2;
+    yard.position.set((x0 + x1) / 2, -0.016, (z0 + z1) / 2);
+    yard.receiveShadow = true;
+    this.scene.add(yard);
+    this.game.flags.east = true;
+    if (!instant) {
+      this.game.fx.burst(V(38, -10).setY(1), 40);
+      this.game.chatter?.say(this.player, '¡La granja sigue creciendo! 🐑', 3);
+    }
+  }
+
+  buildSheep(instant) {
+    this.sheep = new ProductionUnit(this.game, {
+      position: V(34, -12), inputType: 'corn', outputType: 'wool', animal: 'sheep', animalCount: 3, house: 'coop',
+      produceTime: 2.4, feederMax: 24, outputMax: 24, floorColor: '#b9d77a',
+      outputPile: { cols: 2, rows: 2, spacing: [0.5, 0.45] },
+      inputRoles: ['player', 'farmer'], outputRoles: ['player', 'carrier'],
+    });
+    this.game.flags.wool = true;
+    if (!instant) {
+      this.game.fx.popIn(this.sheep.group);
+      this.game.fx.burst(V(34, -12).setY(1), 36);
+    }
+  }
+
+  buildKnit(instant) {
+    this.knit = new Processor(this.game, {
+      position: V(45, -13), recipe: { wool: 1 }, output: 'scarf', produceTime: 3, name: 'TEJEDURÍA',
+      look: { wall: '#e8f0ff', roofColor: '#5a7fd6', awning: ['#ffffff', '#5a7fd6'] },
+      inputRoles: ['player', 'farmer'], outputRoles: ['player', 'carrier'],
+    });
+    this.afterProcessor(this.knit, instant);
+    this.game.flags.scarf = true;
+  }
+
+  buildShop3(instant) {
+    this.shop3 = new Shop(this.game, {
+      position: V(44, 6), name: 'FERIA', spawnPoint: V(51.5, 12), exitPoint: V(51.5, 1), queueSize: 4, instant,
+      products: [
+        { type: 'scarf', x: -1.15, max: 12, pile: { cols: 1, rows: 2, spacing: [0.5, 0.45] } },
+        { type: 'icecream', flag: 'icecream', x: -0.4, max: 10, pile: { cols: 1, rows: 2, spacing: [0.4, 0.4] } },
+        { type: 'juice', flag: 'juice', x: 0.4, max: 12, pile: { cols: 1, rows: 2, spacing: [0.4, 0.4] } },
+      ],
+    });
+    this.game.flags.shop3 = true;
+  }
+
+  buildBerries(instant) {
+    this.berryField = this.addField({ type: 'strawberry', center: V(33, 4), cols: 6, rows: 3, spacing: 1.5, growTime: 8 });
+    this.game.flags.strawberry = true;
+    if (!instant) this.game.fx.burst(V(33, 4).setY(1), 36);
+  }
+
+  buildIceCream(instant) {
+    this.icecream = new Processor(this.game, {
+      position: V(45, -3), recipe: { strawberry: 1, milk: 1 }, output: 'icecream', produceTime: 4, name: 'HELADERÍA',
+      look: { wall: '#fff0f6', roofColor: '#ff9ec4', awning: ['#ffffff', '#7fd3f7'] },
+      inputRoles: ['player', 'farmer'], outputRoles: ['player', 'carrier'], outputMax: 16,
+      outputPile: { spacing: [0.4, 0.4] },
+    });
+    this.afterProcessor(this.icecream, instant);
+    this.game.flags.icecream = true;
+  }
+
+  buildApples(instant) {
+    this.appleField = this.addField({ type: 'apple', center: V(34, -30), cols: 5, rows: 4, spacing: 1.9, growTime: 10 });
+    this.game.flags.apple = true;
+    if (!instant) this.game.fx.burst(V(34, -30).setY(1), 36);
+  }
+
+  buildJuicery(instant) {
+    this.juicery = new Processor(this.game, {
+      position: V(45, -31), recipe: { apple: 1 }, output: 'juice', produceTime: 3, name: 'JUGUERÍA',
+      look: { wall: '#f2ffe6', roofColor: '#57b947', awning: ['#ffffff', '#e2483d'] },
+      inputRoles: ['player', 'farmer'], outputRoles: ['player', 'carrier'],
+      outputPile: { spacing: [0.4, 0.4] },
+    });
+    this.afterProcessor(this.juicery, instant);
+    this.game.flags.juice = true;
+  }
+
+  /** Construcción especial (Granja 6+): decoración animada + 20% más de ingresos. */
+  buildSpecial(s, place, instant) {
+    if (place) {
+      const m = s.model();
+      m.position.copy(s.pos);
+      this.scene.add(m);
+      this.game.obstacles.push({ minX: s.pos.x - 1.6, maxX: s.pos.x + 1.6, minZ: s.pos.z - 1.6, maxZ: s.pos.z + 1.6 });
+      if (m.userData.spin) this.game.add({ update: (dt) => { m.userData.spin.rotation.z += dt * 0.8; } });
+      if (!instant) this.game.fx.popIn(m);
+    }
+    this.specialBonus += 0.2;
+    this.updateIncome();
+    if (!instant) this.game.fx.burst(s.pos.clone().setY(1.5), 50);
+  }
+
   // =====================================================================
   // DECORACIÓN
   // =====================================================================
@@ -497,7 +685,8 @@ export class World {
 
     // Zona reservada para la expansión norte (sin árboles)
     const nz0 = NORTH_MIN_Z - 2.6;
-    const reserved = (x, z) => x > fx0 - 2 && x < fx1 + 2 && z > nz0 && z < fz1 + 2;
+    // Zonas reservadas para las expansiones norte y este (sin árboles)
+    const reserved = (x, z) => x > fx0 - 2 && x < EAST_MAX_X + 3 && z > nz0 && z < fz1 + 2;
 
     // Árboles (verdes y otoñales), arbustos y rocas alrededor
     for (let i = 0; i < 130; i++) {
