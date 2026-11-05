@@ -15,12 +15,14 @@ import { UnlockZone } from '../entities/UnlockZone.js';
 import { WorkerAI } from '../entities/WorkerAI.js';
 import { Tractor } from '../entities/Tractor.js';
 import { PlayerController } from '../entities/PlayerController.js';
+import { CatAI } from '../entities/CatAI.js';
+import { MatiasAI } from '../entities/MatiasAI.js';
 import { Pile } from '../systems/Pile.js';
 import { TransferZone } from '../systems/TransferZone.js';
 import {
   mat, createTree, createBush, createRock, createFenceLine, createFarmhouse, createBin,
   createHayBale, createPumpkin, createSign,
-  createWindmill, createSilo, createGreenhouse, createPond, createFountain,
+  createWindmill, createSilo, createGreenhouse, createPond, createFountain, createDesk,
 } from '../models/Models.js';
 import { CONFIG } from '../config.js';
 import { seeded } from '../utils.js';
@@ -85,6 +87,8 @@ export class World {
     this.berryField = this.appleField = null;
     this.eastOpen = false;
     this.workers = [];
+    this.cats = [];
+    this.matias = null;
 
     this.defineUnlocks();
 
@@ -111,6 +115,9 @@ export class World {
     }
     this.applyPendingUpgrades(true);
     this.refreshZones(true);
+
+    // Los gatos de la granja (siempre presentes, viven en los mostradores)
+    this.cats = [new CatAI(game, this, 'pitanga'), new CatAI(game, this, 'odin')];
   }
 
   // =====================================================================
@@ -125,6 +132,8 @@ export class World {
         apply: worker({ role: 'farmer', name: 'Tito', position: V(-5.5, -1.5), field: () => this.field, unit: () => this.coop }) },
       { id: 'cashier', price: 90, label: 'Cajera Pili', icon: '🧑‍💼', pos: V(12.5, 0.5), requires: ['farmer'],
         apply: worker({ role: 'cashier', name: 'Pili', position: V(12.5, 0.5), shop: () => this.shop }) },
+      { id: 'matias', price: 250, label: 'Administrador Matías', icon: '👨‍💼', pos: V(19.5, 1.4), requires: ['cashier'],
+        apply: (i) => this.hireMatias(i) },
       { id: 'cow', price: 180, label: 'Vacas', icon: '🐄', pos: V(19, -2), requires: ['cashier'], apply: (i) => this.buildBarn(i) },
       { id: 'carrier', price: 150, label: 'Repartidor Lucho', icon: '🧺', pos: V(2, -0.8), requires: ['cow'],
         apply: worker({ role: 'carrier', name: 'Lucho', position: V(2, -0.8), sources: () => [this.coop, this.barn], shop: () => this.shop }) },
@@ -176,6 +185,14 @@ export class World {
 
       // ----- Granja 6 en adelante: una construcción especial por granja -----
       ...this.specialDefs(),
+
+      // ----- Mejoras de Matías (las lee MatiasAI / game.saleMult) -----
+      { id: 'collect', repeat: true, max: 5, growth: 1.7, price: 300, label: 'Cobranza', icon: '💼', pos: V(15.4, -0.4), requires: ['matias'],
+        apply: () => {} },
+      { id: 'accounting', repeat: true, max: 5, growth: 1.8, price: 400, label: 'Contabilidad', icon: '📊', pos: V(22.4, 1.8), requires: ['matias'],
+        apply: () => {} },
+      { id: 'helpme', repeat: true, max: 5, growth: 1.6, price: 250, label: 'Ayuda de Matías', icon: '🤝', pos: V(22.4, 4.7), requires: ['matias'],
+        apply: () => {} },
 
       // ----- Mejoras por niveles -----
       { id: 'cap', repeat: true, max: 8, growth: 1.55, price: 30, label: 'Mochila', icon: '🎒', pos: V(-2, 7.5), requires: [],
@@ -467,6 +484,19 @@ export class World {
     this.pumpkinField = this.addField({ type: 'pumpkin', center: V(-12, -32), cols: 5, rows: 3, spacing: 1.7, growTime: 9 });
     this.game.flags.pumpkin = true;
     if (!instant) this.game.fx.burst(V(-12, -32).setY(1), 36);
+  }
+
+  /** Matías, el administrador: escritorio propio + IA. */
+  hireMatias(instant) {
+    const deskPos = V(19.5, 0.8);
+    const desk = createDesk();
+    desk.position.copy(deskPos);
+    this.scene.add(desk);
+    if (!instant) this.game.fx.popIn(desk);
+    this.game.obstacles.push({ minX: deskPos.x - 0.95, maxX: deskPos.x + 0.95, minZ: deskPos.z - 1.2, maxZ: deskPos.z + 0.5 });
+    // Se para adelante del escritorio cuando "trabaja"
+    this.matias = new MatiasAI(this.game, this, { position: V(19.5, 2.2), desk: V(19.5, 1.75), instant });
+    if (!instant) this.game.chatter?.say(this.matias, '¡Hola a todos! Yo me encargo de los números 📊', 3.2);
   }
 
   // ---------- Granja 3+: Zona Este ----------

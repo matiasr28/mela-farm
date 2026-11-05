@@ -135,6 +135,20 @@ export class Game {
   add(obj) { this.updatables.push(obj); return obj; }
   remove(obj) { obj._removed = true; this._dirty = true; }
 
+  // ---------- Boosts temporales (ayudas de Matías) ----------
+  addBoost(kind, seconds) {
+    this.boosts ??= {};
+    this.boosts[kind] = Math.max(this.boosts[kind] ?? 0, this.time) + seconds;
+  }
+  boostLeft(kind) { return Math.max(0, (this.boosts?.[kind] ?? 0) - this.time); }
+  /** Multiplicador de velocidad de Mela (⚡ turbo). */
+  speedMult() { return this.boostLeft('speed') > 0 ? 1.35 : 1; }
+  /** Multiplicador de lo que pagan clientes y camión: granja × Contabilidad × 🏷️ promo. */
+  saleMult() {
+    const acc = 1 + 0.05 * (this.world.upgrades?.accounting ?? 0);
+    return this.incomeMult * acc * (this.boostLeft('sales') > 0 ? 1.25 : 1);
+  }
+
   /** Bus de eventos simple (harvest, produce, sell, truck, earn, unlock) → misiones. */
   emit(name, data) {
     this.missions?.onEvent(name, data);
@@ -199,6 +213,7 @@ export class Game {
 
     this.fx.update(dt);
     this.hud.update(dt);
+    this.hud.setBoosts(this.boostLeft('speed'), this.boostLeft('sales'));
     this.updateCamera(dt);
 
     this.saveTimer -= dt;

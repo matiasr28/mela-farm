@@ -43,6 +43,13 @@ sin build command y con output directory `.`. O bien, desde la terminal: `npx ve
   | 4 | 🍓 Frutillar → 🍦 Heladería (🍓 + 🥛), Ana |
   | 5 | 🍎 Manzanar → 🧃 Juguería, Toto |
   | 6+ | Una construcción especial por granja (Molino, Silo, Invernadero, Laguna, Fuente…): +20% ingresos |
+- **Pitanga y Odin:** los gatos de la granja. Viven en los mostradores (Pitanga arriba, Odin al
+  lado), de vez en cuando salen a pasear y los clientes los saludan.
+- **Matías, el administrador** (después de la cajera): recorre tiendas y talleres, charla con
+  todos y a veces reta en broma a algún empleado. Cada tanto acompaña a Mela (sin frenarla) y
+  le da una ayuda: ⚡ turbo de velocidad, 🏷️ promo (+25% ventas) o 💵 propina.
+  Mejoras: 💼 **Cobranza** (junta solo la plata de las pilas, +3%/nivel), 📊 **Contabilidad**
+  (+5% ventas/nivel) y 🤝 **Ayuda** (viene más seguido y sus ayudas rinden más).
 - **Misiones:** objetivos cortos con premio (tarjeta arriba a la izquierda).
 - **Charlas:** clientes, empleados y Mela conversan con globitos y "voces"; además dan pistas
   (ej. "¿Hay alguien en la caja?").

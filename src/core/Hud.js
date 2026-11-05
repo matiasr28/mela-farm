@@ -10,6 +10,21 @@ export class Hud {
 
   setHint(html) { if (this.hint) this.hint.innerHTML = html; }
 
+  /** Chips de boosts activos (⚡ turbo / 🏷️ promo) con cuenta regresiva. */
+  setBoosts(speed, sales) {
+    this.boostEl ??= document.getElementById('boosts');
+    if (!this.boostEl) return;
+    const parts = [];
+    if (speed > 0) parts.push(`⚡ ${Math.ceil(speed)}s`);
+    if (sales > 0) parts.push(`🏷️ +25% ${Math.ceil(sales)}s`);
+    const text = parts.join('  ');
+    if (text !== this.lastBoost) {
+      this.lastBoost = text;
+      this.boostEl.textContent = text;
+      this.boostEl.style.display = text ? 'block' : 'none';
+    }
+  }
+
   setFarm(level, mult) {
     const el = document.getElementById('farm-badge');
     if (el) el.textContent = mult > 1 ? `🏡 Granja ${level} · 💰 x${mult}` : `🏡 Granja ${level}`;

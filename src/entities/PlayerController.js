@@ -54,8 +54,9 @@ export class PlayerController {
   update(dt) {
     const dir = this.game.input.getDirection();
     // Pantalla → mundo: derecha = +X, abajo = +Z (la cámara mira hacia -Z)
-    const tx = dir.x * this.speed;
-    const tz = dir.y * this.speed;
+    const spd = this.speed * this.game.speedMult(); // ⚡ turbo de Matías
+    const tx = dir.x * spd;
+    const tz = dir.y * spd;
     const k = 1 - Math.exp(-dt * 12); // aceleración suave
     this.velocity.x += (tx - this.velocity.x) * k;
     this.velocity.z += (tz - this.velocity.z) * k;

@@ -394,6 +394,7 @@ export function createAppleTree() {
 export function createCharacterRig({
   shirt = '#3b82f6', pants = '#2f4a7a', skin = '#f5c9a0', hair = '#5a3a22', hairStyle = 'short',
   hat = null, hatColor = '#e9c46a', shoes = '#5b3a24', overalls = null, tie = '#ff4f81', scale = 1,
+  glasses = false, prop = null,
 } = {}) {
   const root = new THREE.Group();
   const body = new THREE.Group();
@@ -484,6 +485,25 @@ export function createCharacterRig({
     head.add(back);
   } else if (hairStyle === 'bun') {
     head.add(sphere(0.095, hair, 0, 0.25, -0.07));
+  }
+
+  if (glasses) {
+    for (const x of [-0.075, 0.075]) {
+      const lens = new THREE.Mesh(geo('lens', () => new THREE.TorusGeometry(0.05, 0.011, 6, 16)), mat('#2b2b2b'));
+      lens.position.set(x, 0.005, 0.2);
+      head.add(lens);
+    }
+    head.add(box(0.05, 0.012, 0.012, '#2b2b2b', 0, 0.01, 0.205));
+  }
+  if (prop === 'clipboard') {
+    // Tabla con papeles en la mano izquierda
+    const board = new THREE.Group();
+    board.position.set(0.02, -0.36, 0.1);
+    board.rotation.x = -0.9;
+    board.add(box(0.22, 0.3, 0.025, '#b5753f', 0, 0, 0));
+    board.add(box(0.18, 0.22, 0.01, '#ffffff', 0, -0.02, 0.016));
+    board.add(box(0.08, 0.03, 0.02, '#9aa4b1', 0, 0.14, 0.02));
+    armL.add(board);
   }
 
   if (hat === 'straw') {
@@ -583,6 +603,123 @@ export function createSheep() {
     body.add(cyl(0.04, 0.04, 0.35, 8, '#3b3030', x, 0.17, z));
   }
   return { root, body };
+}
+
+/**
+ * Gato. pattern: 'tuxedo' (negro con pecho, hocico y patas blancas) | 'white'.
+ * longHair agrega "melena" esponjosa; tag = color de la chapita del collar.
+ */
+export function createCat({ pattern = 'white', eyes = '#7fd0ff', collar = '#2f6fb5', tag = null, longHair = false } = {}) {
+  const fur = pattern === 'tuxedo' ? '#1e1e22' : '#f7f5f0';
+  const white = '#f7f5f0';
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  root.add(body);
+
+  const torso = sphere(0.2, fur, 0, 0.27, 0);
+  torso.scale.set(0.85, 0.8, 1.35);
+  body.add(torso);
+  const chest = sphere(longHair ? 0.15 : 0.12, white, 0, 0.3, 0.17);
+  chest.scale.set(1, 1.1, 0.8);
+  body.add(chest);
+  if (longHair) {
+    for (const [x, y, z] of [[-0.14, 0.33, 0.05], [0.14, 0.33, 0.05], [0, 0.42, -0.08], [-0.12, 0.3, -0.18], [0.12, 0.3, -0.18]]) {
+      body.add(sphere(0.1, fur, x, y, z, 10, 8));
+    }
+  }
+
+  // Cabeza
+  const head = new THREE.Group();
+  head.position.set(0, 0.47, 0.26);
+  body.add(head);
+  const skull = sphere(0.15, fur);
+  skull.scale.set(1.08, 0.95, 1);
+  head.add(skull);
+  if (longHair) {
+    for (const x of [-0.12, 0.12]) {
+      const cheek = sphere(0.08, white, x, -0.06, 0.04, 10, 8);
+      cheek.scale.set(1.2, 0.9, 0.8);
+      head.add(cheek);
+    }
+  }
+  const muzzle = sphere(0.08, white, 0, -0.04, 0.11, 12, 10);
+  muzzle.scale.set(1.25, 0.85, 0.8);
+  head.add(muzzle);
+  if (pattern === 'tuxedo') {
+    const blaze = sphere(0.04, white, 0, 0.04, 0.135, 8, 6);
+    blaze.scale.set(0.7, 1.6, 0.5);
+    head.add(blaze);
+  }
+  head.add(sphere(0.022, '#f29eb0', 0, -0.015, 0.175, 8, 6));
+  for (const x of [-0.06, 0.06]) {
+    const eye = sphere(0.032, eyes, x, 0.03, 0.12, 10, 8);
+    eye.scale.set(1, 0.85, 0.6);
+    head.add(eye);
+    const pupil = sphere(0.016, '#111111', x, 0.03, 0.138, 8, 6);
+    pupil.scale.set(0.5, 1.2, 0.5);
+    head.add(pupil);
+    const ear = cone(0.06, 0.12, 4, fur, x * 1.55, 0.13, 0);
+    ear.rotation.z = -x * 2.5;
+    head.add(ear);
+    const inner = cone(0.035, 0.07, 4, '#f2b5c0', x * 1.55, 0.125, 0.025);
+    inner.rotation.z = -x * 2.5;
+    head.add(inner);
+    // Bigotes
+    for (const a of [-0.15, 0, 0.15]) {
+      const w = box(0.16, 0.004, 0.004, '#ffffff', x * 2.3, -0.035 + a * 0.1, 0.13);
+      w.rotation.z = a * (x > 0 ? 1 : -1);
+      head.add(w);
+    }
+  }
+
+  // Collar con chapita
+  const ring = new THREE.Mesh(geo('collar', () => new THREE.TorusGeometry(0.1, 0.018, 6, 16)), mat(collar));
+  ring.position.set(0, 0.38, 0.2);
+  ring.rotation.x = Math.PI / 2 + 0.5;
+  body.add(ring);
+  if (tag) body.add(box(0.05, 0.06, 0.012, tag, 0, 0.31, 0.28));
+
+  // Patas (blancas en el gato frac)
+  const legs = [];
+  for (const [x, z] of [[-0.09, 0.15], [0.09, 0.15], [-0.09, -0.15], [0.09, -0.15]]) {
+    const pivot = new THREE.Group();
+    pivot.position.set(x, 0.2, z);
+    pivot.add(capsule(0.045, 0.1, fur, 0, -0.08, 0));
+    pivot.add(sphere(0.05, pattern === 'tuxedo' ? white : fur, 0, -0.17, 0.01, 8, 6));
+    body.add(pivot);
+    legs.push(pivot);
+  }
+
+  // Cola esponjosa
+  const tail = new THREE.Group();
+  tail.position.set(0, 0.3, -0.25);
+  const r = longHair ? 0.07 : 0.045;
+  const t1 = capsule(r, 0.18, fur, 0, 0.12, -0.04);
+  t1.rotation.x = -0.4;
+  const t2 = capsule(r * 0.95, 0.16, fur, 0, 0.3, -0.1);
+  t2.rotation.x = -0.15;
+  tail.add(t1, t2);
+  if (pattern === 'tuxedo') tail.add(sphere(r * 1.05, fur, 0, 0.42, -0.12, 8, 6));
+  body.add(tail);
+
+  return { root, body, head, tail, legs };
+}
+
+/** Escritorio de Matías: mesa, silla, compu y papeles. */
+export function createDesk() {
+  const g = new THREE.Group();
+  g.add(box(1.8, 0.08, 0.9, C.wood, 0, 0.78, 0));
+  for (const x of [-0.8, 0.8]) for (const z of [-0.35, 0.35]) g.add(box(0.08, 0.78, 0.08, C.woodDark, x, 0.39, z));
+  g.add(box(0.5, 0.32, 0.03, '#2b2b2b', -0.3, 1.0, -0.2));
+  g.add(box(0.46, 0.28, 0.01, '#7fd3f7', -0.3, 1.0, -0.18));
+  g.add(box(0.5, 0.02, 0.3, '#3a3a3a', -0.3, 0.83, 0.05));
+  for (let i = 0; i < 4; i++) g.add(box(0.28, 0.025, 0.36, i % 2 ? '#ffffff' : '#f1f1e6', 0.45, 0.835 + i * 0.026, 0));
+  g.add(cyl(0.06, 0.05, 0.12, 10, '#e2483d', 0.75, 0.88, -0.25));
+  // Silla
+  g.add(box(0.5, 0.08, 0.5, '#3f6fb5', 0, 0.48, -0.8));
+  g.add(box(0.5, 0.55, 0.08, '#3f6fb5', 0, 0.78, -1.05));
+  g.add(cyl(0.04, 0.04, 0.44, 8, '#555555', 0, 0.22, -0.8));
+  return g;
 }
 
 // =====================================================================

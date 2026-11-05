@@ -99,7 +99,7 @@ export class Truck {
 
   reward() {
     const base = Object.entries(this.order).reduce((s, [t, n]) => s + ITEMS[t].price * n, 0);
-    return Math.round(base * CONFIG.truck.rewardMult * this.game.incomeMult);
+    return Math.round(base * CONFIG.truck.rewardMult * this.game.saleMult());
   }
 
   rollWheels(dist) {

@@ -168,7 +168,7 @@ export class Chatter {
     const old = this.bubbles.find((b) => b.talker === talker);
     if (old) { old.dispose(); this.bubbles.splice(this.bubbles.indexOf(old), 1); }
     this.bubbles.push(new SpeechBubble(this.game, talker, text, duration));
-    this.game.audio.play('talk', { pos: talker.root.position, pitch: talker.voice ?? 1 });
+    this.game.audio.play(talker.isCat ? 'meow' : 'talk', { pos: talker.root.position, pitch: talker.voice ?? 1 });
   }
 
   /** Comentario de Mela ante un evento (con enfriamiento por tipo). */
@@ -185,7 +185,9 @@ export class Chatter {
   startConvo(lines) {
     const talkers = [...new Set(lines.map((l) => l[0]))];
     talkers.forEach((t) => { t._talking = true; });
-    this.convos.push({ lines, i: 0, t: 0, talkers });
+    const convo = { lines, i: 0, t: 0, talkers };
+    this.convos.push(convo);
+    return convo;
   }
 
   free(t) { return t && !t._talking && !t.dead; }
@@ -221,7 +223,7 @@ export class Chatter {
   tryStart() {
     const builders = [
       () => this.hintConvo(), () => this.queueConvo(), () => this.cashierConvo(),
-      () => this.workerMelaConvo(), () => this.workerWorkerConvo(),
+      () => this.workerMelaConvo(), () => this.workerWorkerConvo(), () => this.catConvo(),
     ];
     // Las pistas tienen prioridad; el resto se elige al azar
     const first = builders.shift();
@@ -308,6 +310,28 @@ export class Chatter {
     return null;
   }
 }
+
+const CAT_GREETS = {
+  Pitanga: ['¡Hola, Pitanga! 😺', '¡Qué peluda está Pitanga!', 'Pitanga, ¡qué linda chapita!', '¿Me dejás acariciarte, Pitanga?'],
+  Odin: ['¡Hola, Odin! 😺', '¡Odin, qué ojos celestes!', '¡Qué lindo gatito blanco!', 'Odin, ¿cuidás la tienda?'],
+};
+const MEOWS = ['Miau 💕', 'Miau~', 'Prrrr...', '¡Miau!', 'Mrrr 😺'];
+
+Chatter.prototype.catConvo = function catConvo() {
+  const w = this.game.world;
+  const p = this.game.player;
+  for (const cat of (w.cats ?? []).filter((c) => this.free(c) && this.near(c))) {
+    // Mela pasa cerca del gato
+    if (this.free(p) && distXZ2(p.position, cat.position) < 2.5 * 2.5) {
+      return [[p, `¡Hola, ${cat.name}! 🐾`], [cat, pick(MEOWS)]];
+    }
+    if (!cat.atHome) continue;
+    // Clientes de la fila de su tienda
+    const c = cat.shop?.queue.queue.find((q) => q.atSlot && this.free(q) && distXZ2(q.position, cat.position) < 3.5 * 3.5);
+    if (c) return [[c, pick(CAT_GREETS[cat.name] ?? ['¡Hola, gatito!'])], [cat, pick(MEOWS)]];
+  }
+  return null;
+};
 
 function fill(text, a, b) {
   return text.replaceAll('{a}', a.name ?? '').replaceAll('{b}', b.name ?? '');

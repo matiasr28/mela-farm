@@ -169,7 +169,7 @@ export class Shop {
   }
 
   checkout(c) {
-    const amount = Math.round(c.total * this.game.incomeMult);
+    const amount = Math.round(c.total * this.game.saleMult());
     const from = c.position.clone().setY(1.2);
     this.cashPile.addMoney(amount, from);
     this.game.audio.play('register', { pos: from });
