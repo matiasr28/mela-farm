@@ -1,0 +1,130 @@
+// ResourceNode: campo de cultivo (maíz, trigo o zapallos). Cada planta crece con un
+// temporizador; cualquier carrier con canHarvest que camine por el campo cosecha
+// automáticamente la planta madura más cercana (si su `harvestTypes` lo permite).
+import * as THREE from 'three';
+import { createCornPlant, createWheatPlant, createPumpkinPlant, createItem, mat, C } from '../models/Models.js';
+import { CONFIG } from '../config.js';
+
+const _v = new THREE.Vector3();
+
+const CROPS = {
+  corn: { plant: createCornPlant, soil: C.soil, furrow: C.soilDark },
+  wheat: { plant: createWheatPlant, soil: '#a5733f', furrow: '#8a5c30' },
+  pumpkin: { plant: createPumpkinPlant, soil: '#7d5233', furrow: '#65411f' },
+};
+
+export class ResourceNode {
+  constructor(game, { type = 'corn', center, cols = 6, rows = 5, spacing = 1.5, growTime = CONFIG.field.growTime }) {
+    this.game = game;
+    this.type = type;
+    this.center = center.clone();
+    this.growTime = growTime;
+    this.growMult = 1;
+    this.halfW = ((cols - 1) * spacing) / 2 + 0.9;
+    this.halfD = ((rows - 1) * spacing) / 2 + 0.9;
+    this.rowZ = [];
+    const crop = CROPS[type];
+
+    // Tierra arada + surcos
+    this.group = new THREE.Group();
+    game.scene.add(this.group);
+    const soil = new THREE.Mesh(new THREE.BoxGeometry(this.halfW * 2, 0.12, this.halfD * 2), mat(crop.soil));
+    soil.position.set(center.x, 0.0, center.z);
+    soil.receiveShadow = true;
+    this.group.add(soil);
+
+    this.plants = [];
+    for (let r = 0; r < rows; r++) {
+      const z = center.z + (r - (rows - 1) / 2) * spacing;
+      this.rowZ.push(z);
+      const furrow = new THREE.Mesh(new THREE.BoxGeometry(this.halfW * 2 - 0.4, 0.04, 0.5), mat(crop.furrow));
+      furrow.position.set(center.x, 0.07, z);
+      furrow.receiveShadow = true;
+      this.group.add(furrow);
+      for (let c = 0; c < cols; c++) {
+        const { group, cob } = crop.plant();
+        const pos = new THREE.Vector3(center.x + (c - (cols - 1) / 2) * spacing, 0.06, z);
+        group.position.copy(pos);
+        group.rotation.y = Math.random() * Math.PI * 2;
+        this.group.add(group);
+        this.plants.push({ group, cob, position: pos, grown: true, t: growTime, phase: Math.random() * 6 });
+      }
+    }
+
+    this.timers = new Map();
+    game.add(this);
+  }
+
+  get minX() { return this.center.x - this.halfW; }
+  get maxX() { return this.center.x + this.halfW; }
+
+  contains(pos, pad = 0) {
+    return Math.abs(pos.x - this.center.x) < this.halfW + pad && Math.abs(pos.z - this.center.z) < this.halfD + pad;
+  }
+
+  update(dt) {
+    const time = this.game.time;
+
+    // Crecimiento y vaivén con el viento
+    for (const p of this.plants) {
+      if (!p.grown) {
+        p.t += dt * this.growMult;
+        const k = Math.min(1, p.t / this.growTime);
+        p.group.scale.set(0.45 + 0.55 * k, 0.12 + 0.88 * k, 0.45 + 0.55 * k);
+        p.cob.visible = k > 0.8;
+        if (k >= 1) {
+          p.grown = true;
+          this.game.fx.tween(0.3, (u) => {
+            if (!p.grown) return;
+            const s = 1 + Math.sin(u * Math.PI) * 0.15;
+            p.group.scale.set(s, s, s);
+          });
+        }
+      }
+      p.group.rotation.z = Math.sin(time * 1.7 + p.phase) * 0.04;
+    }
+
+    // Cosecha automática por proximidad
+    for (const c of this.game.carriers) {
+      const allowed = c.canHarvest && (!c.harvestTypes || c.harvestTypes.includes(this.type));
+      if (!allowed || !this.contains(c.position, 0.8)) { this.timers.delete(c); continue; }
+      let t = (this.timers.get(c) ?? 0) - dt;
+      if (t <= 0) {
+        t = 0;
+        if (c.stack.canAccept(this.type)) {
+          const p = this.nearestGrown(c.position, CONFIG.field.harvestRadius);
+          if (p) { this.harvest(p, c.stack); t = CONFIG.field.harvestInterval; }
+        }
+      }
+      this.timers.set(c, t);
+    }
+  }
+
+  /** Cosecha la planta y manda el producto volando al sink (pila del carrier o cajón). */
+  harvest(p, sink) {
+    p.cob.getWorldPosition(_v);
+    p.grown = false;
+    p.t = 0;
+    p.cob.visible = false;
+    p.group.scale.set(0.45, 0.12, 0.45);
+    const mesh = createItem(this.type);
+    mesh.position.copy(_v);
+    this.game.scene.add(mesh);
+    sink.receive(this.type, mesh);
+    this.game.audio.play('harvest', { pos: p.position, volume: sink === this.game.player?.stack ? 1 : 0.4 });
+    this.game.emit('harvest', { type: this.type });
+  }
+
+  nearestGrown(pos, maxDist = Infinity) {
+    let best = null;
+    let bestD = maxDist * maxDist;
+    for (const p of this.plants) {
+      if (!p.grown) continue;
+      const dx = p.position.x - pos.x;
+      const dz = p.position.z - pos.z;
+      const d = dx * dx + dz * dz;
+      if (d < bestD) { bestD = d; best = p; }
+    }
+    return best;
+  }
+}

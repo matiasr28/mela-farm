@@ -1,0 +1,8 @@
+# Sistema / editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+# Dependencias y deploy (por si se agregan más adelante)
+node_modules/
+.vercel/

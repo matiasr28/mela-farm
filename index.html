@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#6cc24a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Mela's Farm" />
+  <meta name="description" content="Mela's Farm: un tycoon arcade de granja. Cosechá, criá gallinas y vacas, vendé y hacé crecer la granja de Mela." />
+  <title>Mela's Farm</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐔</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- Three.js vía CDN (sin build: compatible con Vercel estático) -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="money" class="pill"><span class="bill"></span><span id="money-value">0</span></div>
+    <div id="farm-badge">🏡 Granja 1</div>
+  </div>
+  <div id="mission"></div>
+  <button id="reset-btn" class="round-btn" title="Reiniciar partida" aria-label="Reiniciar partida">⟲</button>
+  <button id="sound-btn" class="round-btn" title="Sonido" aria-label="Sonido">🔊</button>
+  <div id="hint"></div>
+
+  <!-- Pantalla de inicio (también desbloquea el audio en celulares) -->
+  <div id="splash">
+    <div class="splash-card">
+      <div class="logo">
+        <span class="logo-top">Mela's</span>
+        <span class="logo-bottom">Farm</span>
+      </div>
+      <div class="tagline">¡Construí la granja de Mela!</div>
+      <div class="emojis">🌽 🐔 🥚 🐄 🥛 🚜</div>
+      <button id="play-btn">¡JUGAR!</button>
+      <div class="splash-hint" id="splash-hint"></div>
+    </div>
+  </div>
+  <div id="loading">Cargando granja…</div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
