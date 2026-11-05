@@ -444,11 +444,16 @@ export function createCharacterRig({
   const skull = sphere(0.2, skin);
   skull.scale.set(1, 1.04, 0.98);
   head.add(skull);
+  const eyes = [];
+  const shines = [];
   for (const x of [-0.07, 0.07]) {
     const eye = sphere(0.027, '#2a1a10', x, 0.0, 0.18, 10, 8);
     eye.scale.y = 1.35;
     head.add(eye);
-    head.add(sphere(0.009, '#ffffff', x + 0.01, 0.013, 0.205, 6, 4));
+    eyes.push(eye);
+    const shine = sphere(0.009, '#ffffff', x + 0.01, 0.013, 0.205, 6, 4);
+    head.add(shine);
+    shines.push(shine);
     const blush = sphere(0.032, '#f7a1a1', x * 1.75, -0.05, 0.155, 10, 8);
     blush.scale.set(1, 0.6, 0.4);
     head.add(blush);
@@ -545,7 +550,7 @@ export function createCharacterRig({
   body.add(backAnchor);
 
   root.scale.setScalar(scale);
-  return { root, body, legL, legR, armL, armR, head, tail, backAnchor, frontAnchor };
+  return { root, body, legL, legR, armL, armR, head, tail, eyes, shines, backAnchor, frontAnchor };
 }
 
 export function createChicken() {

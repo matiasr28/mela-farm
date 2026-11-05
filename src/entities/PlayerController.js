@@ -75,20 +75,20 @@ export class PlayerController {
     }
     this.root.rotation.y = this.yaw;
 
-    this.character.animate(dt, sp / CONFIG.player.speed, { carryFront: this.stack.count > 0 });
-
-    // 💋 Beso con Matías: si está quieta lo mira y se inclina; si el jugador la mueve, sigue caminando.
-    if ((this.kissUntil ?? 0) > this.game.time && this.kissTarget) {
-      if (sp < 0.3) {
-        const t = this.kissTarget;
-        this.yaw = lerpAngle(this.yaw, Math.atan2(t.x - this.position.x, t.z - this.position.z), 1 - Math.exp(-dt * 12));
-        this.root.rotation.y = this.yaw;
-        this.character.body.rotation.x = 0.16;
-        this.character.head.rotation.x = 0.22;
-      }
-    } else {
-      this.character.head.rotation.x = 0;
+    // 💋 Beso con Matías (this.kiss lo maneja MatiasAI): de frente, abrazándolo del cuello.
+    // Si el jugador mueve el joystick, la pose se suelta y Mela sigue caminando.
+    const kiss = this.kiss;
+    const kk = kiss && sp < 0.5 ? kiss.k : 0;
+    if (kk > 0) {
+      this.yaw = lerpAngle(this.yaw, kiss.yaw, 1 - Math.exp(-dt * 16));
+      this.root.rotation.y = this.yaw;
     }
+    this.character.kissK = kk;
+    this.character.kissArms = 'neck';
+    // La pila se corre al costado para que no quede entre los dos
+    this.stack.root.position.set(0.5 * kk, 0, -0.2 * kk);
+
+    this.character.animate(dt, sp / CONFIG.player.speed, { carryFront: this.stack.count > 0 });
     this.stack.update(dt, this.velocity.x, this.velocity.z, this.yaw);
 
     // Cartel "MAX" sobre la pila cuando está llena (+ sonido al llenarse)

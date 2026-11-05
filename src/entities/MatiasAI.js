@@ -170,6 +170,7 @@ export class MatiasAI {
           this.game.chatter.say(this, pick(['¿Un besito? 😘', 'Amor, ¿me das un beso? 💕', '¿Y mi beso, Mela? 😘']), 4);
           this.state = 'asking';
           this.askTimer = 8;
+          this._talking = true; // que no arranquen otras charlas mientras espera el beso
           this.game.hud.showKiss(true, () => this.startKiss(), this.askTimer);
           this.game.audio.play('happy');
         } else if (this.giveUp <= 0) {
@@ -182,6 +183,7 @@ export class MatiasAI {
         this.askTimer -= dt;
         this.game.hud.showKiss(true, () => this.startKiss(), this.askTimer);
         if (this.askTimer <= 0) {
+          this._talking = false;
           this.game.hud.showKiss(false);
           this.game.chatter.say(this, pick(['¡Bueno, después! 😉', 'Me lo debés, eh 😘', '¡Uh, qué ocupada! Después 💕']));
           this.state = 'roam';
@@ -189,11 +191,22 @@ export class MatiasAI {
         }
         break;
       case 'kissing': {
-        // Se pone al lado de Mela, mirándola, y se inclina
-        const side = new THREE.Vector3(Math.cos(p.yaw), 0, -Math.sin(p.yaw)).multiplyScalar(0.62);
-        this.target.copy(p.position).add(side).setY(0);
-        this.kissT -= dt;
-        if (this.kissT <= 0) this.finishKiss();
+        // De frente a Mela, a la distancia justa para que los labios se toquen al inclinarse.
+        // Tiempos: 0–0,35 s se acercan · 0,35–1,45 s beso · 1,45–1,8 s se separan.
+        const d = this.kissDir;
+        const KISS_IN = 0.35;
+        const KISS_OUT = 1.45;
+        const KISS_END = 1.8;
+        this.kissT += dt;
+        // Si el jugador mueve el joystick, se separan con suavidad
+        if (Math.hypot(p.velocity.x, p.velocity.z) > 0.5 && this.kissT < KISS_OUT) this.kissT = KISS_OUT;
+        const t = this.kissT;
+        const k = t < KISS_IN ? t / KISS_IN : t < KISS_OUT ? 1 : Math.max(0, 1 - (t - KISS_OUT) / (KISS_END - KISS_OUT));
+        this.kissK = k;
+        this.target.copy(p.position).addScaledVector(d, 0.72 + (1 - k) * 0.35).setY(0);
+        p.kiss = { k, yaw: Math.atan2(d.x, d.z) };
+        if (!this.kissPopped && t >= KISS_IN) { this.kissPopped = true; this.kissMoment(); }
+        if (t >= KISS_END) this.finishKiss();
         break;
       }
     }
@@ -227,31 +240,48 @@ export class MatiasAI {
     this.move(dt);
   }
 
-  /** El jugador tocó 💋: beso de ~1,4 s (no frena el juego). */
+  /** El jugador tocó 💋: beso de ~1,8 s en total (no frena el juego). */
   startKiss() {
     if (this.state !== 'asking') return;
     const g = this.game;
     g.hud.showKiss(false);
     this.state = 'kissing';
-    this.kissT = 1.4;
-    g.player.kissUntil = g.time + 1.4;
-    g.player.kissTarget = this.position;
+    this.kissT = 0;
+    this.kissK = 0;
+    this.kissPopped = false;
+    // Dirección de Mela hacia Matías (se ubica de frente a ella en esa dirección)
+    const d = this.position.clone().sub(g.player.position).setY(0);
+    if (d.lengthSq() < 0.01) d.set(Math.sin(g.player.yaw), 0, Math.cos(g.player.yaw));
+    this.kissDir = d.normalize();
+    // Mientras se besan, no aparecen otros globitos encima
+    this._talking = true;
+    g.player._talking = true;
+  }
+
+  /** Momento del beso: "muak", corazón grande y corazoncitos alrededor. */
+  kissMoment() {
+    const g = this.game;
     g.audio.play('kiss');
     try { navigator.vibrate?.([30, 40, 30]); } catch { /* sin vibración */ }
-    // Lluvia de corazones entre los dos
-    for (let i = 0; i < 7; i++) {
-      g.fx.tween(i * 0.12, null, () => {
-        const mid = this.position.clone().lerp(g.player.position, 0.5);
-        mid.x += (Math.random() - 0.5) * 0.9;
-        mid.z += (Math.random() - 0.5) * 0.4;
-        mid.y = 1.7 + Math.random() * 0.4;
-        g.fx.floatText(pick(['❤️', '💕', '💗']), mid);
+    const mid = () => this.position.clone().lerp(g.player.position, 0.5);
+    g.fx.floatText('💗', mid().setY(2.05));
+    for (let i = 0; i < 6; i++) {
+      g.fx.tween(0.15 + i * 0.13, null, () => {
+        const m = mid();
+        m.x += (Math.random() - 0.5) * 0.9;
+        m.z += (Math.random() - 0.5) * 0.5;
+        m.y = 1.8 + Math.random() * 0.4;
+        g.fx.floatText(pick(['❤️', '💕', '💗']), m);
       });
     }
   }
 
   finishKiss() {
     const g = this.game;
+    this.kissK = 0;
+    g.player.kiss = null;
+    this._talking = false;
+    g.player._talking = false;
     g.addBoost('love', 30);
     g.fx.floatText('💕 ¡Enamorada!', g.player.position.clone().setY(2.9), '#ff9ec4');
     g.chatter.say(this, pick(['Te quiero, amor 💕', '¡Seguí rompiéndola, mi amor!', 'Sos lo más lindo de la granja 🌻']), 3);
@@ -349,15 +379,15 @@ export class MatiasAI {
     } else if (this.state === 'roam' && this.target.equals(this.desk)) {
       this.yaw = lerpAngle(this.yaw, 0, 1 - Math.exp(-dt * 6));
     }
-    if (this.state === 'kissing') {
-      // Mira a Mela durante el beso
-      this.yaw = lerpAngle(this.yaw, Math.atan2(p.position.x - this.position.x, p.position.z - this.position.z), 1 - Math.exp(-dt * 14));
+    const kissing = this.state === 'kissing';
+    if (kissing) {
+      // De frente a Mela durante el beso
+      this.yaw = lerpAngle(this.yaw, Math.atan2(-this.kissDir.x, -this.kissDir.z), 1 - Math.exp(-dt * 16));
     }
     this.root.rotation.y = this.yaw;
-    this.character.animate(dt, moving ? Math.min(1, speed / 5.5) : 0);
-    this.character.body.rotation.x = this.state === 'kissing' ? 0.18 : this.character.body.rotation.x;
-    this.character.head.rotation.x = this.state === 'kissing' ? 0.22 : 0;
-    // La tabla siempre en la mano (brazo izquierdo un poco levantado)
-    this.character.armL.rotation.x = -0.6;
+    this.character.kissK = kissing ? this.kissK : 0;
+    this.character.kissArms = 'waist';
+    this.character.animate(dt, moving && !kissing ? Math.min(1, speed / 5.5) : 0);
+    if (!kissing) this.character.armL.rotation.x = -0.6; // la tabla en la mano
   }
 }

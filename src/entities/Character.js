@@ -41,10 +41,50 @@ export class Character {
     this.body.rotation.x = 0.06 * s; // leve inclinación al correr
     this.head.rotation.z = s < 0.05 ? Math.sin(this.idle * 1.3) * 0.03 : 0;
 
+    this.kissPose(this.kissK ?? 0, this.kissArms);
+
     // Colita que rebota al caminar
     if (this.tail) {
       this.tail.rotation.x = 0.25 * s + Math.sin(this.phase * 2) * 0.18 * s + Math.sin(this.idle * 2) * 0.03;
       this.tail.rotation.z = Math.sin(this.phase) * 0.15 * s;
+    }
+  }
+
+  /**
+   * Pose de beso, mezclada con la pose actual según k (0..1):
+   * se inclina hacia adelante, ladea la cabeza, cierra los ojos y abraza.
+   * arms: 'neck' (brazos al cuello, en puntas de pie) | 'waist' (manos en la cintura).
+   * Se aplica dentro de animate(); para usarla: character.kissK = k; character.kissArms = '...'.
+   */
+  kissPose(k, arms = 'waist') {
+    if (k <= 0.001) {
+      if (this._kissed) {
+        this.eyes.forEach((e) => { e.scale.y = 1.35; });
+        this.shines.forEach((s) => { s.visible = true; });
+        this.head.rotation.x = 0;
+        this._kissed = false;
+      }
+      return;
+    }
+    this._kissed = true;
+    const s = k * k * (3 - 2 * k); // suavizado
+    const mix = (a, b) => a + (b - a) * s;
+    this.body.rotation.x = mix(this.body.rotation.x, 0.1);
+    this.head.rotation.x = mix(0, 0.1);
+    this.head.rotation.z = mix(this.head.rotation.z, -0.32); // cabeza ladeada (los dos al mismo lado propio)
+    this.eyes.forEach((e) => { e.scale.y = 1.35 * (1 - 0.85 * s); });
+    this.shines.forEach((sh) => { sh.visible = s < 0.5; });
+    if (arms === 'neck') {
+      this.body.position.y += 0.05 * s; // en puntas de pie
+      this.armL.rotation.x = mix(this.armL.rotation.x, -2.25);
+      this.armR.rotation.x = mix(this.armR.rotation.x, -2.25);
+      this.armL.rotation.z = mix(this.armL.rotation.z, 0.38);
+      this.armR.rotation.z = mix(this.armR.rotation.z, -0.38);
+    } else {
+      this.armL.rotation.x = mix(this.armL.rotation.x, -1.05);
+      this.armR.rotation.x = mix(this.armR.rotation.x, -1.05);
+      this.armL.rotation.z = mix(this.armL.rotation.z, 0.55);
+      this.armR.rotation.z = mix(this.armR.rotation.z, -0.55);
     }
   }
 }
