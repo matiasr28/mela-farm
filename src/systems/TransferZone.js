@@ -14,8 +14,10 @@ export class TransferZone {
     this.mode = mode;
     this.types = types;
     this.target = target;
-    // El camionero puede recoger de cualquier pallet donde recogen los repartidores
-    this.roles = mode === 'pickup' && roles.includes('carrier') ? [...roles, 'trucker'] : roles;
+    // El camionero y el panadero pueden recoger de cualquier pallet donde recogen los repartidores
+    this.roles = mode === 'pickup' && roles.includes('carrier') ? [...roles, 'trucker', 'baker'] : [...roles];
+    // Los encargados de la Gerencia pueden usar cualquier mesa, comedero, pallet o estantería
+    if (roles.includes('player')) this.roles.push('manager');
     this.radius = radius;
     this.interval = interval;
     this.position = position.clone();
@@ -73,7 +75,9 @@ export class TransferZone {
     let present = false;
     if (this.enabled) {
       for (const c of this.game.carriers) {
-        if (!this.roles.includes(c.role)) continue;
+        // Un granjero "de mandado" (ver WorkerAI.thinkFarmer) también puede recoger de los pallets
+        const errand = this.mode === 'pickup' && c.fetching && this.roles.includes('carrier');
+        if (!this.roles.includes(c.role) && !errand) continue;
         const dx = c.position.x - this.position.x;
         const dz = c.position.z - this.position.z;
         if (dx * dx + dz * dz > this.radius * this.radius) { this.timers.delete(c); continue; }

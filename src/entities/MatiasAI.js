@@ -341,9 +341,10 @@ export class MatiasAI {
 
   /** Pila de billetes con plata que Mela no esté juntando. */
   findPile() {
-    const shops = [this.world.shop, this.world.shop2, this.world.shop3].filter(Boolean);
+    const shops = this.world.shops();
     const piles = shops.map((s) => s.cashPile);
     if (this.world.truck) piles.push(this.world.truck.cashPile);
+    if (this.world.restaurant) piles.push(this.world.restaurant.cashPile);
     const p = this.game.player.position;
     return piles
       .filter((c) => c.landedCount >= 4 && distXZ2(c.center, p) > 4 * 4)
@@ -354,7 +355,7 @@ export class MatiasAI {
   pickNext() {
     const w = this.world;
     const spots = [this.desk, this.desk];
-    for (const s of [w.shop, w.shop2, w.shop3]) if (s) spots.push(s.position.clone().add(new THREE.Vector3(3.4, 0, 1.8)));
+    for (const s of w.shops()) spots.push(s.position.clone().add(new THREE.Vector3(3.4, 0, 1.8)));
     for (const pr of w.processors()) spots.push(pr.position.clone().add(new THREE.Vector3(0, 0, 5)));
     spots.push(w.coop.pickupZone.position.clone().add(new THREE.Vector3(1.5, 0, 1)));
     this.target.copy(pick(spots));

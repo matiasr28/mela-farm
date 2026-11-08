@@ -122,8 +122,17 @@ export class UnlockZone {
     ctx.textBaseline = 'middle';
     ctx.font = `52px ${FONT}`;
     ctx.fillText(this.icon, W / 2, pad + h * 0.2);
-    strokeText(ctx, String(this.remaining), W / 2, pad + h * 0.53, { size: 86, fill: '#ffffff', stroke: '#1a6d96' });
-    strokeText(ctx, this.label, W / 2, pad + h * 0.85, { size: 26, fill: '#ffffff', stroke: '#1a6d96' });
+    // El precio también se achica si no entra (de 6 cifras en adelante)
+    const price = String(this.remaining);
+    let psize = 86;
+    ctx.font = `900 ${psize}px ${FONT}`;
+    while (psize > 40 && ctx.measureText(price).width > w - 30) ctx.font = `900 ${--psize}px ${FONT}`;
+    strokeText(ctx, price, W / 2, pad + h * 0.53, { size: psize, fill: '#ffffff', stroke: '#1a6d96' });
+    // Los textos largos se achican para entrar en la baldosa
+    let size = 26;
+    ctx.font = `900 ${size}px ${FONT}`;
+    while (size > 16 && ctx.measureText(this.label).width > w - 34) ctx.font = `900 ${--size}px ${FONT}`;
+    strokeText(ctx, this.label, W / 2, pad + h * 0.85, { size, fill: '#ffffff', stroke: '#1a6d96' });
   }
 }
 

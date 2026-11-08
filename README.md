@@ -38,13 +38,22 @@ sin build command y con output directory `.`. O bien, desde la terminal: `npx ve
 
   | Granja | Contenido nuevo |
   |---|---|
-  | 2 | 🎃 Zapallar → 🍯 Dulcería, 🎂 Pastelería (🥚 + 🥛 + 🌾) |
+  | 2 | 🎃 Zapallar → 🥫 Dulcería, 🎂 Pastelería (🥚 + 🥛 + 🌾) y la Pastelera Dora que la abastece |
   | 3 | 🐑 Zona Este: ovejas (🧶) → 🧣 Tejeduría, 🎪 Feria, Pancho, Lola y Mateo |
   | 4 | 🍓 Frutillar → 🍦 Heladería (🍓 + 🥛), Ana |
   | 5 | 🍎 Manzanar → 🧃 Juguería, Toto |
-  | 6+ | Una construcción especial por granja (Molino, Silo, Invernadero, Laguna, Fuente…): +20% ingresos |
+  | 6 | 🌻 Zona Oeste: Girasoles → 🧴 Aceitera, 🌬️ Molino (🌾🌾 → 🥣, +20% ingresos), 🥐 Facturería (🥣 + 🧴 + 🥚), 🧺 Mercado, Chela, Facu, Mirta, Rulo y el Panadero Julio (abastece Facturería y Pastelería) |
+  | 7 | 🐐 Los Cerros (el cerco se corre al norte): 🌿 Pastizal → 🐐 Cabras (🍶 leche de cabra) → 🧀 Quesería (🍶🍶), 🍕 Pizzería (🥣 + 🧀 + 🧴), 🏪 Parador, 🏗️ Silo (+50% en comederos y pallets, +20% ingresos), mejora Cabritas, Nina, Coco, Lali y el Pizzero Tano |
+  | 8 | 🌷 Las Flores (el cerco se corre al este): 🌷 Invernadero (cultiva tulipanes, +20% ingresos) → 🐝 Colmenas (🍯 miel) → 🍪 Alfajorería (🥣 + 🍯 + 🥛), 🏪 Kiosco, mejora Abejas, Lucio, Male, Tomi, el Alfajorero Gringo y Gerencia del Kiosco |
+  | 9 | 🦆 La Laguna (el cerco se corre al norte otra vez): 🦆 Laguna (patos y orilla de pesca 🐟, +20% ingresos) → 🍤 Freiduría (🐟🐟 + 🥚) y 🥟 Rotisería (🐟 + 🥣), 🏪 Cantina, mejora Cañas, Cacho, Nelly, Juanchi, la Cocinera Rosita y Gerencia de la Cantina |
+  | 10 | 🍽️ Restaurante: los comensales se sientan y piden 🥞 (🥐 + 🥛), 🥪 (🍞 + 🧀), 🍲 (🐟 + 🎃) o 🍨 (🎂 + 🍦); la cocina cocina sólo lo pedido con lo que haya en la despensa, Mela o el Mozo Pipo lo llevan a la mesa y, si llega rápido, dejan propina ⭐. Ayudante Fito, mejora Más mesas, ⛲ Fuente (más comensales, +20% ingresos) y Gerencia del Restaurante |
+  | 11+ | Se repiten los especiales (Molino 2, Silo 2…): +20% ingresos |
 - **Pitanga y Odin:** los gatos de la granja. Viven en los mostradores (Pitanga arriba, Odin al
   lado), de vez en cuando salen a pasear y los clientes los saludan.
+- **Gerencia (📋, una por negocio):** baldosa al lado de cada tienda (Tienda, Almacén, Feria, Mercado, Parador, Kiosco, Cantina, Restaurante),
+  con 3 niveles caros para que el negocio funcione solo: **1)** encargado/a que cubre lo que más falta
+  (mesas, estantería o comederos), **2)** caja propia (las ventas entran directo, sin juntar billetes) y
+  **3)** a full (+40% de velocidad en sus talleres y corrales). Se habilita con cajero y repartidor del negocio.
 - **Matías, el administrador** (después de la cajera): recorre tiendas y talleres, charla con
   todos y a veces reta en broma a algún empleado. Cada tanto acompaña a Mela (sin frenarla) y
   le da una ayuda: ⚡ turbo de velocidad, 🏷️ promo (+25% ventas) o 💵 propina.
@@ -77,11 +86,12 @@ En la consola del navegador: `game.addMoney(1000)` para probar.
 | `systems/TransferZone.js` | Zonas genéricas de depositar/recoger para jugador y trabajadores |
 | `entities/ResourceNode.js` | Campos (maíz, trigo, zapallo): crecimiento y cosecha por proximidad |
 | `entities/ProductionUnit.js` | Corral: animales consumen maíz y producen huevos/leche |
-| `entities/Processor.js` | Talleres con receta (panadería, dulcería, pastelería) |
-| `entities/CustomerAI.js` + `QueueSystem.js` + `Shop.js` | Clientes, fila y mostradores (Tienda / Almacén) |
+| `entities/Processor.js` | Talleres con receta (panadería, dulcería, pastelería, molino, aceitera, facturería) |
+| `entities/Restaurant.js` | Restaurante (Granja 10): mesas, comensales, despensa, cocina, pasaplatos y propina |
+| `entities/CustomerAI.js` + `QueueSystem.js` + `Shop.js` | Clientes, fila y mostradores (esperan hasta que haya lo que pidieron)  |
 | `entities/Truck.js` | Camión con pedidos de todos los productos disponibles |
 | `entities/UnlockZone.js` | Pago progresivo para desbloquear |
-| `entities/WorkerAI.js` / `Tractor.js` | Empleados con nombre y ayudantes automáticos |
+| `entities/WorkerAI.js` / `Tractor.js` | Empleados con nombre (granjeros, repartidores, cajeros, camionero, panaderos) y tractor. Ana y Pancho además hacen "mandados" (🥛 a la Heladería, 🧶 a la Tejeduría) |
 | `systems/Missions.js` | Misiones con recompensa (escucha eventos del juego) |
 | `systems/Chatter.js` | Diálogos entre personajes y pistas |
 | `world/World.js` | Mapa, desbloqueos, mejoras por nivel, Zona Norte y prestigio |

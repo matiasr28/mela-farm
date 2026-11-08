@@ -30,7 +30,7 @@ export class Truck {
     // Zona de carga al costado (lado norte) del camión estacionado
     this.dropZone = new TransferZone(game, {
       position: new THREE.Vector3(parkPos.x - 1.0, 0, parkPos.z - 3.4), mode: 'drop',
-      types: ['corn', 'egg', 'milk', 'wheat', 'pumpkin', 'bread', 'jam', 'cake', 'wool', 'scarf', 'strawberry', 'icecream', 'apple', 'juice'],
+      types: Object.keys(ITEMS).filter((t) => !['cash', 'breakfast', 'sandwich', 'stew', 'dessert'].includes(t)),
       target: this, roles: ['player', 'trucker'],
     });
     this.cashPile = new CashPile(game, { position: new THREE.Vector3(parkPos.x + 2.4, 0, parkPos.z - 3.4) });
@@ -76,7 +76,7 @@ export class Truck {
     if (f.pumpkin) avail.push('pumpkin');
     if (f.jam) avail.push('jam');
     if (f.cake) avail.push('cake');
-    for (const t of ['wool', 'scarf', 'strawberry', 'icecream', 'apple', 'juice']) if (f[t]) avail.push(t);
+    for (const t of ['wool', 'scarf', 'strawberry', 'icecream', 'apple', 'juice', 'sunflower', 'flour', 'oil', 'croissant', 'grass', 'goatmilk', 'cheese', 'pizza', 'flower', 'honey', 'alfajor', 'fish', 'friedfish', 'empanada']) if (f[t]) avail.push(t);
 
     const o = {};
     if (lvl < 2) {

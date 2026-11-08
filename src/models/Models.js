@@ -265,6 +265,253 @@ function createJuiceItem() {
   return g;
 }
 
+// ---------- Granja 6: girasoles, aceite, harina y medialunas ----------
+function createSunflowerHead() {
+  // Flor de girasol (pétalos amarillos alrededor de un centro marrón), mirando hacia +Z
+  const g = new THREE.Group();
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    const p = sphere(0.075, '#ffcc1a', Math.cos(a) * 0.14, Math.sin(a) * 0.14, 0, 8, 6);
+    p.scale.set(1, 0.55, 0.35);
+    p.rotation.z = a;
+    g.add(p);
+  }
+  const c = sphere(0.1, '#6b4226', 0, 0, 0.02, 12, 8);
+  c.scale.z = 0.45;
+  g.add(c);
+  return g;
+}
+
+function createSunflowerItem() {
+  const g = new THREE.Group();
+  const head = createSunflowerHead();
+  head.rotation.x = -Math.PI / 2; // acostada
+  head.position.y = 0.06;
+  g.add(head);
+  return g;
+}
+
+function createFlourItem() {
+  // Bolsa de harina atada
+  const g = new THREE.Group();
+  const sack = new THREE.Mesh(geo('flourSack', () => new RoundedBoxGeometry(0.3, 0.26, 0.22, 3, 0.08)), mat('#f4efe2'));
+  g.add(finish(sack, 0, 0.13, 0));
+  g.add(box(0.31, 0.07, 0.225, '#4f86c6', 0, 0.12, 0));
+  g.add(cyl(0.05, 0.08, 0.08, 8, '#f4efe2', 0, 0.29, 0));
+  g.add(cyl(0.055, 0.055, 0.02, 8, '#b5651d', 0, 0.27, 0));
+  return g;
+}
+
+function createOilItem() {
+  // Botella de aceite de girasol
+  const g = new THREE.Group();
+  const glass = new THREE.MeshStandardMaterial({ color: '#f2c230', roughness: 0.2, transparent: true, opacity: 0.85 });
+  const body = new THREE.Mesh(geo('oilBody', () => new THREE.CylinderGeometry(0.09, 0.1, 0.24, 12)), glass);
+  g.add(finish(body, 0, 0.12, 0));
+  g.add(box(0.19, 0.08, 0.02, '#ffffff', 0, 0.12, 0.092));
+  g.add(cyl(0.035, 0.07, 0.08, 10, '#f2c230', 0, 0.28, 0));
+  g.add(cyl(0.04, 0.04, 0.04, 10, '#2e8b57', 0, 0.34, 0));
+  return g;
+}
+
+function createCroissantItem() {
+  // Medialuna dorada sobre una servilletita
+  const g = new THREE.Group();
+  g.add(box(0.36, 0.015, 0.3, '#ffffff', 0, 0.008, 0));
+  const arc = new THREE.Mesh(geo('croissant', () => new THREE.TorusGeometry(0.12, 0.065, 8, 14, Math.PI * 1.25)), mat('#e0a04a'));
+  arc.rotation.x = -Math.PI / 2;
+  arc.rotation.z = -Math.PI * 0.12;
+  g.add(finish(arc, 0, 0.07, 0.03));
+  g.add(sphere(0.07, '#d48f3c', 0, 0.075, -0.09, 10, 8));
+  return g;
+}
+
+// ---------- Granja 7: pasto, leche de cabra, queso y pizza ----------
+function createGrassItem() {
+  // Atado de pasto fresco con un hilo
+  const g = new THREE.Group();
+  const bundle = box(0.32, 0.16, 0.2, '#6fbf3a', 0, 0.08, 0);
+  g.add(bundle);
+  g.add(box(0.33, 0.04, 0.205, '#a7e06a', 0, 0.165, 0));
+  g.add(box(0.05, 0.17, 0.21, '#c49a5a', 0, 0.085, 0));
+  return g;
+}
+
+function createGoatMilkItem() {
+  // Tarrito de leche de cabra (cerámica clara con tapa de corcho)
+  const g = new THREE.Group();
+  g.add(cyl(0.1, 0.12, 0.22, 12, '#fbf6ea', 0, 0.11, 0));
+  g.add(cyl(0.121, 0.121, 0.05, 12, '#8fbf45', 0, 0.1, 0));
+  g.add(cyl(0.05, 0.08, 0.06, 10, '#fbf6ea', 0, 0.25, 0));
+  g.add(cyl(0.045, 0.045, 0.04, 8, '#b5835a', 0, 0.3, 0));
+  return g;
+}
+
+function createCheeseItem() {
+  // Horma de queso con una porción cortada
+  const g = new THREE.Group();
+  const wheel = new THREE.Mesh(
+    geo('cheeseWheel', () => new THREE.CylinderGeometry(0.17, 0.17, 0.14, 16, 1, false, 0, Math.PI * 1.65)),
+    mat('#ffcf4a'),
+  );
+  g.add(finish(wheel, 0, 0.07, 0));
+  for (const [x, y, z] of [[0.08, 0.1, 0.12], [-0.1, 0.05, 0.11], [0.15, 0.06, -0.02]]) g.add(sphere(0.022, '#e0a800', x, y, z, 6, 4));
+  return g;
+}
+
+function createPizzaItem() {
+  // Pizza de muzzarella con aceitunas sobre su tabla
+  const g = new THREE.Group();
+  g.add(cyl(0.22, 0.22, 0.025, 18, '#b5835a', 0, 0.012, 0));
+  g.add(cyl(0.19, 0.2, 0.035, 18, '#e8b462', 0, 0.04, 0));
+  g.add(cyl(0.165, 0.165, 0.02, 18, '#d9412e', 0, 0.06, 0));
+  g.add(cyl(0.15, 0.15, 0.02, 18, '#ffe7a3', 0, 0.072, 0));
+  for (const [x, z] of [[0.07, 0.05], [-0.06, 0.08], [-0.08, -0.06], [0.05, -0.08], [0, 0]]) g.add(sphere(0.018, '#2b2b2b', x, 0.085, z, 6, 4));
+  return g;
+}
+
+// ---------- Granja 8: flores, miel y alfajores ----------
+const FLOWER_COLORS = ['#ff5d8f', '#ffcf3a', '#e8304a', '#b07cf0', '#ff9f1c'];
+
+function createFlowerItem() {
+  // Ramito de tulipanes atado
+  const g = new THREE.Group();
+  for (const [x, z, c] of [[-0.06, 0, 0], [0.06, 0.02, 1], [0, -0.06, 3]]) {
+    const stem = cyl(0.012, 0.012, 0.2, 5, '#4f9e2c', x, 0.1, z);
+    g.add(stem);
+    const bloom = cone(0.06, 0.1, 6, FLOWER_COLORS[c], x, 0.24, z);
+    bloom.rotation.x = Math.PI;
+    g.add(bloom);
+  }
+  g.add(cyl(0.05, 0.05, 0.04, 8, '#f4efe2', 0, 0.08, 0));
+  return g;
+}
+
+function createHoneyItem() {
+  // Frasco de miel con tapa a cuadritos y cucharón
+  const g = new THREE.Group();
+  const glass = new THREE.MeshStandardMaterial({ color: '#f5a623', roughness: 0.15, transparent: true, opacity: 0.9 });
+  const jar = new THREE.Mesh(geo('honeyJar', () => new THREE.CylinderGeometry(0.11, 0.1, 0.2, 12)), glass);
+  g.add(finish(jar, 0, 0.1, 0));
+  g.add(cyl(0.12, 0.12, 0.05, 12, '#e8503f', 0, 0.225, 0));
+  g.add(cyl(0.122, 0.122, 0.015, 12, '#ffffff', 0, 0.21, 0));
+  g.add(box(0.12, 0.06, 0.01, '#fff3d6', 0, 0.1, 0.105));
+  return g;
+}
+
+function createAlfajorItem() {
+  // Alfajor bañado en chocolate (con un poco de dulce asomando)
+  const g = new THREE.Group();
+  g.add(cyl(0.13, 0.13, 0.05, 16, '#5a3220', 0, 0.025, 0));
+  g.add(cyl(0.122, 0.122, 0.03, 16, '#c98b4a', 0, 0.06, 0));
+  g.add(cyl(0.13, 0.13, 0.05, 16, '#5a3220', 0, 0.095, 0));
+  g.add(cyl(0.06, 0.06, 0.008, 10, '#ffffff', 0, 0.123, 0));
+  return g;
+}
+
+// ---------- Granja 9: pescado, frituras y empanadas ----------
+function createFishShape(color = '#7fb3d5') {
+  const g = new THREE.Group();
+  const body = sphere(0.1, color, 0, 0, 0, 12, 8);
+  body.scale.set(0.55, 0.75, 1.6);
+  g.add(body);
+  const tail = cone(0.08, 0.12, 4, color, 0, 0, -0.2);
+  tail.rotation.x = -Math.PI / 2;
+  tail.scale.set(0.3, 1, 1);
+  g.add(tail);
+  g.add(sphere(0.018, '#222', 0.045, 0.03, 0.1, 6, 4));
+  g.add(sphere(0.018, '#222', -0.045, 0.03, 0.1, 6, 4));
+  return g;
+}
+
+function createFishItem() {
+  // Pescado fresco acostado sobre hojitas
+  const g = new THREE.Group();
+  const f = createFishShape();
+  f.rotation.z = Math.PI / 2;
+  f.position.y = 0.08;
+  g.add(f);
+  return g;
+}
+
+function createFriedFishItem() {
+  // Cucurucho de papel con frituras doradas
+  const g = new THREE.Group();
+  const paper = cone(0.13, 0.26, 10, '#f4efe2', 0, 0.13, 0);
+  paper.rotation.x = Math.PI;
+  g.add(paper);
+  for (const [x, z] of [[0.05, 0.02], [-0.05, 0.03], [0, -0.05], [0.02, 0.06]]) {
+    const piece = capsule(0.035, 0.1, '#e0a04a', x, 0.29, z);
+    piece.rotation.z = x * 6;
+    g.add(piece);
+  }
+  g.add(sphere(0.03, '#ffe066', 0.07, 0.3, -0.04, 8, 6)); // limoncito
+  return g;
+}
+
+function createEmpanadaItem() {
+  // Empanada con repulgue
+  const g = new THREE.Group();
+  const half = new THREE.Mesh(
+    geo('empanada', () => new THREE.CylinderGeometry(0.15, 0.15, 0.08, 16, 1, false, 0, Math.PI)),
+    mat('#e8b462'),
+  );
+  half.rotation.z = Math.PI / 2;
+  half.rotation.y = Math.PI / 2;
+  g.add(finish(half, 0, 0.04, 0));
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 6) * Math.PI;
+    g.add(sphere(0.025, '#d48f3c', Math.cos(a) * 0.15, 0.03 + Math.sin(a) * 0.07, 0, 6, 4));
+  }
+  return g;
+}
+
+// ---------- Granja 10: platos del Restaurante (todos sobre un plato blanco) ----------
+function plate(g) {
+  g.add(cyl(0.2, 0.16, 0.03, 18, '#ffffff', 0, 0.015, 0));
+  return g;
+}
+
+function createBreakfastItem() {
+  // Desayuno de campo: panqueques con miel y una medialuna al costado
+  const g = plate(new THREE.Group());
+  for (let i = 0; i < 3; i++) g.add(cyl(0.1, 0.1, 0.035, 14, '#e8b462', -0.04, 0.05 + i * 0.037, 0));
+  g.add(cyl(0.06, 0.08, 0.02, 12, '#f5a623', -0.04, 0.15, 0));
+  g.add(capsule(0.035, 0.08, '#d48f3c', 0.12, 0.05, 0.02));
+  return g;
+}
+
+function createSandwichItem() {
+  // Sándwich de campo: pan, queso y pan, cortado en triángulo
+  const g = plate(new THREE.Group());
+  for (const [y, c] of [[0.05, '#e8c27a'], [0.085, '#ffcf4a'], [0.12, '#e8c27a']]) {
+    const t = new THREE.Mesh(geo('sandTri', () => new THREE.CylinderGeometry(0.15, 0.15, 0.035, 3)), mat(c));
+    g.add(finish(t, 0, y, 0));
+  }
+  return g;
+}
+
+function createStewItem() {
+  // Cazuela de pescado y zapallo en su bol
+  const g = new THREE.Group();
+  g.add(cyl(0.17, 0.12, 0.12, 16, '#b5651d', 0, 0.06, 0));
+  g.add(cyl(0.155, 0.155, 0.02, 16, '#f2a03d', 0, 0.12, 0));
+  g.add(sphere(0.04, '#e8762b', 0.05, 0.14, 0.03, 8, 6));
+  g.add(sphere(0.035, '#f4efe2', -0.05, 0.14, -0.02, 8, 6));
+  g.add(sphere(0.02, '#4f9e2c', 0, 0.145, 0.07, 6, 4));
+  return g;
+}
+
+function createDessertItem() {
+  // Postre: porción de torta con una bocha de helado
+  const g = plate(new THREE.Group());
+  const slice = new THREE.Mesh(geo('cakeSlice', () => new THREE.CylinderGeometry(0.13, 0.13, 0.11, 12, 1, false, 0, Math.PI / 2.2)), mat('#f7d6e0'));
+  g.add(finish(slice, -0.03, 0.085, 0));
+  g.add(sphere(0.06, '#ff9ec4', 0.09, 0.08, 0.02, 10, 8));
+  g.add(sphere(0.02, '#e2483d', 0.09, 0.14, 0.02, 6, 4));
+  return g;
+}
+
 /** Catálogo de ítems: alto al apilar, precio base de venta y emoji para la UI. */
 export const ITEMS = {
   corn: { height: 0.22, price: 2, emoji: '🌽', name: 'maíz', create: createCornItem },
@@ -273,7 +520,7 @@ export const ITEMS = {
   wheat: { height: 0.21, price: 2, emoji: '🌾', name: 'trigo', create: createWheatItem },
   pumpkin: { height: 0.34, price: 3, emoji: '🎃', name: 'zapallos', create: createPumpkinItem },
   bread: { height: 0.21, price: 8, emoji: '🍞', name: 'panes', create: createBreadItem },
-  jam: { height: 0.3, price: 12, emoji: '🍯', name: 'dulces', create: createJamItem },
+  jam: { height: 0.3, price: 12, emoji: '🥫', name: 'dulces', create: createJamItem }, // 🍯 es la miel (Granja 8)
   cake: { height: 0.32, price: 25, emoji: '🎂', name: 'tortas', create: createCakeItem },
   wool: { height: 0.3, price: 4, emoji: '🧶', name: 'lana', create: createWoolItem },
   scarf: { height: 0.2, price: 20, emoji: '🧣', name: 'bufandas', create: createScarfItem },
@@ -281,6 +528,25 @@ export const ITEMS = {
   icecream: { height: 0.48, price: 30, emoji: '🍦', name: 'helados', create: createIceCreamItem },
   apple: { height: 0.28, price: 3, emoji: '🍎', name: 'manzanas', create: createAppleItem },
   juice: { height: 0.3, price: 15, emoji: '🧃', name: 'jugos', create: createJuiceItem },
+  sunflower: { height: 0.14, price: 4, emoji: '🌻', name: 'girasoles', create: createSunflowerItem },
+  flour: { height: 0.3, price: 9, emoji: '🥣', name: 'harina', create: createFlourItem },
+  oil: { height: 0.36, price: 16, emoji: '🧴', name: 'aceite', create: createOilItem },
+  croissant: { height: 0.16, price: 55, emoji: '🥐', name: 'medialunas', create: createCroissantItem },
+  grass: { height: 0.19, price: 2, emoji: '🌿', name: 'pasto', create: createGrassItem },
+  goatmilk: { height: 0.32, price: 7, emoji: '🍶', name: 'leche de cabra', create: createGoatMilkItem },
+  cheese: { height: 0.15, price: 30, emoji: '🧀', name: 'quesos', create: createCheeseItem },
+  pizza: { height: 0.1, price: 80, emoji: '🍕', name: 'pizzas', create: createPizzaItem },
+  flower: { height: 0.28, price: 3, emoji: '🌷', name: 'flores', create: createFlowerItem },
+  honey: { height: 0.25, price: 14, emoji: '🍯', name: 'miel', create: createHoneyItem },
+  alfajor: { height: 0.13, price: 70, emoji: '🍪', name: 'alfajores', create: createAlfajorItem },
+  fish: { height: 0.2, price: 5, emoji: '🐟', name: 'pescados', create: createFishItem },
+  friedfish: { height: 0.32, price: 45, emoji: '🍤', name: 'frituras', create: createFriedFishItem },
+  empanada: { height: 0.13, price: 40, emoji: '🥟', name: 'empanadas', create: createEmpanadaItem },
+  // Platos del Restaurante (Granja 10): se sirven en la mesa, no van en el camión
+  breakfast: { height: 0.2, price: 150, emoji: '🥞', name: 'desayunos', create: createBreakfastItem },
+  sandwich: { height: 0.16, price: 110, emoji: '🥪', name: 'sándwiches', create: createSandwichItem },
+  stew: { height: 0.17, price: 130, emoji: '🍲', name: 'cazuelas', create: createStewItem },
+  dessert: { height: 0.16, price: 160, emoji: '🍨', name: 'postres', create: createDessertItem },
   cash: { height: 0.11, price: 1, emoji: '💵', name: 'plata', create: createCashItem },
 };
 
@@ -382,6 +648,96 @@ export function createAppleTree() {
   }
   g.add(apples);
   return { group: g, cob: apples };
+}
+
+export function createSunflowerPlant() {
+  const g = new THREE.Group();
+  g.add(cyl(0.04, 0.06, 1.6, 8, '#4f9e2c', 0, 0.8, 0));
+  for (let i = 0; i < 3; i++) {
+    const leaf = sphere(0.16, i % 2 ? '#4f9e2c' : '#62b53a', 0, 0.45 + i * 0.32, 0, 8, 6);
+    leaf.scale.set(1.5, 0.25, 0.8);
+    leaf.position.x = i % 2 ? -0.17 : 0.17;
+    leaf.rotation.z = i % 2 ? 0.4 : -0.4;
+    g.add(leaf);
+  }
+  const head = createSunflowerHead();
+  head.scale.setScalar(1.5);
+  head.position.set(0, 1.62, 0.06);
+  head.rotation.x = -0.25;
+  g.add(head);
+  return { group: g, cob: head };
+}
+
+export function createGrassPlant() {
+  // Mata de pasto alto (alfalfa) con florcitas violetas arriba
+  const g = new THREE.Group();
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2;
+    const r = 0.12;
+    const blade = cone(0.07, 0.75 + (i % 3) * 0.12, 5, i % 2 ? '#5fae35' : '#7cc94a', Math.cos(a) * r, 0.4, Math.sin(a) * r);
+    blade.rotation.set(Math.sin(a) * 0.25, 0, -Math.cos(a) * 0.25);
+    g.add(blade);
+  }
+  const tops = new THREE.Group();
+  for (const [x, z] of [[0.1, 0.05], [-0.08, 0.1], [0, -0.12]]) tops.add(sphere(0.06, '#a77ad6', x, 0.85, z, 8, 6));
+  g.add(tops);
+  return { group: g, cob: tops };
+}
+
+export function createFlowerPlant() {
+  // Tulipán de color al azar con dos hojas
+  const g = new THREE.Group();
+  g.add(cyl(0.025, 0.03, 0.6, 6, '#4f9e2c', 0, 0.3, 0));
+  for (const s of [-1, 1]) {
+    const leaf = sphere(0.1, '#62b53a', s * 0.08, 0.18, 0, 8, 6);
+    leaf.scale.set(0.6, 1.6, 0.35);
+    leaf.rotation.z = -s * 0.4;
+    g.add(leaf);
+  }
+  const bloom = new THREE.Group();
+  const c = FLOWER_COLORS[Math.floor(Math.random() * FLOWER_COLORS.length)];
+  for (let i = 0; i < 3; i++) {
+    const petal = sphere(0.09, c, Math.cos(i * 2.1) * 0.04, 0.68, Math.sin(i * 2.1) * 0.04, 10, 8);
+    petal.scale.set(0.8, 1.3, 0.8);
+    bloom.add(petal);
+  }
+  g.add(bloom);
+  return { group: g, cob: bloom };
+}
+
+export function createFishSpot() {
+  // Lugar de pesca en la orilla: corcho que flota y un pez que salta cuando "creció"
+  const g = new THREE.Group();
+  const ring = new THREE.Mesh(geo('ripple', () => new THREE.TorusGeometry(0.28, 0.025, 6, 20)), mat('#d6f0ff'));
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = 0.09;
+  g.add(ring);
+  g.add(sphere(0.06, '#e8503f', 0.15, 0.12, 0.1, 8, 6));
+  g.add(sphere(0.04, '#ffffff', 0.15, 0.17, 0.1, 8, 6));
+  const fish = new THREE.Group();
+  const f = createFishShape('#ff9f1c');
+  f.scale.setScalar(1.6);
+  f.rotation.x = -0.7;
+  f.position.y = 0.42;
+  fish.add(f);
+  g.add(fish);
+  return { group: g, cob: fish };
+}
+
+export function createDuck() {
+  const g = new THREE.Group();
+  const body = sphere(0.22, '#ffffff', 0, 0.12, 0, 12, 10);
+  body.scale.set(0.8, 0.6, 1.2);
+  g.add(body);
+  g.add(sphere(0.12, '#2e8b57', 0, 0.36, 0.2, 10, 8));
+  const beak = box(0.1, 0.04, 0.12, '#ffb703', 0, 0.33, 0.33);
+  g.add(beak);
+  g.add(sphere(0.02, '#222', 0.07, 0.4, 0.27, 6, 4));
+  g.add(sphere(0.02, '#222', -0.07, 0.4, 0.27, 6, 4));
+  const tail = cone(0.07, 0.14, 6, '#ffffff', 0, 0.2, -0.27);
+  tail.rotation.x = -1.1;
+  g.add(tail);
+  return g;
 }
 
 // =====================================================================
@@ -627,6 +983,71 @@ export function createSheep() {
     body.add(cyl(0.04, 0.04, 0.35, 8, '#3b3030', x, 0.17, z));
   }
   return { root, body };
+}
+
+export function createGoat() {
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  root.add(body);
+  const torso = sphere(0.26, '#f1e7d6', 0, 0.55, 0, 12, 10);
+  torso.scale.set(0.85, 0.85, 1.35);
+  body.add(torso);
+  body.add(sphere(0.12, '#9a6b46', 0.06, 0.62, -0.1, 10, 8)); // mancha marrón
+  // Cabeza, orejas caídas, cuernitos y barba
+  body.add(sphere(0.14, '#f1e7d6', 0, 0.82, 0.36, 12, 10));
+  const snout = sphere(0.08, '#e2d3bb', 0, 0.76, 0.48, 10, 8);
+  snout.scale.set(1, 0.8, 1.1);
+  body.add(snout);
+  for (const x of [-0.13, 0.13]) {
+    const ear = sphere(0.05, '#9a6b46', x, 0.82, 0.34, 8, 6);
+    ear.scale.set(1.8, 0.5, 0.8);
+    body.add(ear);
+    const horn = cone(0.025, 0.14, 6, '#8a7a66', x * 0.45, 0.98, 0.32);
+    horn.rotation.x = -0.5;
+    body.add(horn);
+    body.add(sphere(0.02, '#222', x * 0.5, 0.86, 0.48, 6, 4));
+  }
+  const beard = cone(0.035, 0.12, 6, '#d8c8ad', 0, 0.64, 0.46);
+  beard.rotation.x = Math.PI;
+  body.add(beard);
+  for (const [x, z] of [[-0.13, 0.2], [0.13, 0.2], [-0.13, -0.2], [0.13, -0.2]]) {
+    body.add(cyl(0.035, 0.035, 0.4, 8, '#f1e7d6', x, 0.2, z));
+    body.add(cyl(0.04, 0.04, 0.06, 8, '#3b3030', x, 0.03, z));
+  }
+  const tail = cone(0.04, 0.12, 6, '#f1e7d6', 0, 0.72, -0.36);
+  tail.rotation.x = -0.8;
+  body.add(tail);
+  return { root, body };
+}
+
+export function createBee() {
+  // Abeja regordeta: el cuerpo va "volando" (ProductionUnit la hace flotar y aletear)
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  root.add(body);
+  const torso = sphere(0.13, '#ffcf1a', 0, 0, 0, 12, 10);
+  torso.scale.set(0.9, 0.9, 1.3);
+  body.add(torso);
+  for (const z of [-0.06, 0.05]) {
+    const stripe = cyl(0.122, 0.122, 0.04, 12, '#2b2b2b', 0, 0, z);
+    stripe.rotation.x = Math.PI / 2;
+    body.add(stripe);
+  }
+  body.add(sphere(0.08, '#2b2b2b', 0, 0.02, 0.17, 10, 8));
+  body.add(cone(0.025, 0.07, 6, '#2b2b2b', 0, 0, -0.2));
+  const wingMat = new THREE.MeshStandardMaterial({ color: '#ffffff', transparent: true, opacity: 0.7, roughness: 0.2 });
+  const wings = [];
+  for (const s of [-1, 1]) {
+    const pivot = new THREE.Group();
+    pivot.position.set(s * 0.05, 0.1, 0);
+    const w = new THREE.Mesh(geo('beeWing', () => new THREE.SphereGeometry(0.1, 8, 6)), wingMat);
+    w.scale.set(1, 0.15, 0.6);
+    w.position.x = s * 0.09;
+    pivot.add(w);
+    body.add(pivot);
+    wings.push(pivot);
+  }
+  return { root, body, wings };
 }
 
 /**
@@ -975,6 +1396,18 @@ export function createCounter() {
   g.add(box(0.5, 0.28, 0.42, '#3a6fd8', 1.35, 1.18, -0.05));
   g.add(box(0.42, 0.18, 0.08, '#2b56b0', 1.35, 1.38, -0.2));
   g.add(box(0.3, 0.04, 0.2, '#d9e6ff', 1.35, 1.33, 0.08));
+  return g;
+}
+
+/** Colmenas: cajones apilados (blancos y amarillos) sobre una base. */
+export function createHiveHouse() {
+  const g = new THREE.Group();
+  for (const [x, n] of [[-0.75, 3], [0.15, 2], [0.95, 3]]) {
+    g.add(box(0.75, 0.15, 0.65, C.woodDark, x, 0.08, 0));
+    for (let i = 0; i < n; i++) g.add(box(0.7, 0.32, 0.6, i % 2 ? '#ffe28a' : '#ffffff', x, 0.32 + i * 0.33, 0));
+    g.add(box(0.8, 0.08, 0.7, '#c98b4a', x, 0.2 + n * 0.33, 0));
+    g.add(box(0.25, 0.04, 0.02, '#2b2b2b', x, 0.22, 0.305));
+  }
   return g;
 }
 

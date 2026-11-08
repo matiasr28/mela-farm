@@ -41,7 +41,7 @@ export class CatAI {
     game.add(this);
   }
 
-  shops() { return [this.world.shop, this.world.shop2, this.world.shop3].filter(Boolean); }
+  shops() { return this.world.shops(); }
 
   /** Lugar en el mostrador: Pitanga arriba (borde izquierdo), Odin echado adelante. */
   homeSpot(shop, out) {

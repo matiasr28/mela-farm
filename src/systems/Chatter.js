@@ -36,6 +36,34 @@ const FERIA_CHATS = [
   ['¡Esta feria está buenísima!', 'Mela pensó en todo.'],
   ['¿Las ovejas tienen nombre?', '¡Seguro que Mela se los puso!'],
 ];
+const MERCADO_CHATS = [
+  ['¿Probaste las medialunas de acá?', '¡Con un café son lo más! 🥐'],
+  ['Aceite de girasol de la granja, ¡qué lujo!', 'Para las ensaladas, ideal.'],
+  ['¿Viste el molino? ¡Es gigante!', '¡Ahí muelen la harina!'],
+  ['Me llevo una docena de medialunas.', '¡Uh, ¿hay cumple?'],
+  ['¡Qué lindos los girasoles!', 'Siempre miran para el sol 🌻'],
+];
+const PARADOR_CHATS = [
+  ['¿Probaste el queso de cabra?', '¡Es lo más rico que hay! 🧀'],
+  ['Vine solo por la pizza de Mela 🍕', '¡Yo también! Hay que esperar, pero vale la pena.'],
+  ['¿Viste las cabritas en el cerro?', '¡Una se subió arriba del comedero!'],
+  ['¡Qué vista linda hay desde acá arriba!', 'Se ve toda la granja.'],
+  ['¿El silo ese es nuevo?', 'Sí, ahora entra mucho más alimento.'],
+];
+const KIOSCO_CHATS = [
+  ['¿Probaste los alfajores de Mela?', '¡Mejores que los de la costa! 🍪'],
+  ['Miel de las flores del invernadero 🍯', '¡Con razón es tan rica!'],
+  ['Cuidado, ¡hay abejas por todos lados! 🐝', 'Tranqui, son re buenas.'],
+  ['Me llevo una docena de alfajores.', '¿Para el viaje? ¡Buena idea!'],
+  ['¡Qué lindo el invernadero!', 'Parece un arcoíris de tulipanes 🌷'],
+];
+const CANTINA_CHATS = [
+  ['¿Viste los patitos en la laguna? 🦆', '¡Hay uno que no para de nadar en círculos!'],
+  ['Unas empanadas de pescado, ¡qué invento!', '¡Son de lo más ricas! 🥟'],
+  ['Frituras recién hechas 🍤', 'Con limoncito, ¡ideal!'],
+  ['Dicen que acá se pesca con la mano.', '¡Mela se mete al agua y todo!'],
+  ['¡Qué linda la laguna al atardecer!', 'La granja no para de crecer.'],
+];
 const CASHIER_CHATS = [
   ['¡Hola! ¿Qué te llevás?', 'Lo de siempre, por favor.'],
   ['¡Bienvenido a lo de Mela!', '¡Gracias! Siempre tan amables.'],
@@ -60,6 +88,22 @@ const WORKER_TO_MELA = {
   trucker: [
     ['¡Mela! El camión sale completito 🚚', '¡Genial, {a}!'],
     ['Otro pedido despachado, jefa 📦', '¡Sos un crack, {a}!'],
+  ],
+  baker: [
+    ['¡Mela! Las medialunas salen calentitas 🥐', '¡Qué rico, {a}!'],
+    ['No para el horno, ¡qué ritmo!', '¡Vos sos el ritmo, {a}!'],
+    ['¡Sale una pizza bien de muzza! 🍕', '¡Qué pinta, {a}!'],
+    ['¡Alfajores recién bañados! 🍪', '¡Guardame uno, {a}!'],
+    ['¡Salen empanadas para la Cantina! 🥟', '¡Qué olorcito, {a}!'],
+  ],
+  waiter: [
+    ['¡Mesa 3 servida, jefa! 🍽️', '¡Volando, {a}!'],
+    ['Hoy dejaron una propina bárbara ⭐', '¡Porque sos un rayo, {a}!'],
+  ],
+  manager: [
+    ['Mela, tranquila: este negocio lo manejo yo 📋', '¡Gracias, {a}! Sos lo más.'],
+    ['Todo en orden por acá, jefa.', '¡Así da gusto, {a}!'],
+    ['Las mesas llenas y la caja también 💵', '¡Excelente, {a}!'],
   ],
   cashier: [
     ['Mela, ¡hoy vendimos un montón!', '¡Sos una genia, {a}!'],
@@ -239,7 +283,7 @@ export class Chatter {
     }
   }
 
-  shops() { return [this.game.world.shop, this.game.world.shop2, this.game.world.shop3].filter(Boolean); }
+  shops() { return this.game.world.shops(); }
   near(t) { return distXZ2(t.root.position, this.game.player.position) < 16 * 16; }
 
   /** Pistas: nadie en la caja / falta un producto. */
@@ -265,7 +309,7 @@ export class Chatter {
         const b = q[i + 1];
         if (a.atSlot && b.atSlot && this.free(a) && this.free(b) && this.near(a)) {
           const w = this.game.world;
-          const pool = shop === w.shop2 ? ALMACEN_CHATS : shop === w.shop3 ? FERIA_CHATS : QUEUE_CHATS;
+          const pool = shop === w.shop2 ? ALMACEN_CHATS : shop === w.shop3 ? FERIA_CHATS : shop === w.shop4 ? MERCADO_CHATS : shop === w.shop5 ? PARADOR_CHATS : shop === w.shop6 ? KIOSCO_CHATS : shop === w.shop7 ? CANTINA_CHATS : QUEUE_CHATS;
           const [l1, l2] = pick(pool);
           return [[a, l1], [b, l2]];
         }

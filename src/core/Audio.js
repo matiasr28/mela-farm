@@ -71,6 +71,7 @@ const SFX = {
       a.tone(t + i * 0.07, 650 - i * 60 + Math.random() * 80, 0.05, { type: 'square', vol: 0.045 * v, filter: 1800, slide: 450 });
     }
   },
+  buzz: (a, t, v) => a.tone(t, 210, 0.35, { type: 'sawtooth', vol: 0.06 * v, slide: 240, filter: 900, attack: 0.04 }),
   moo: (a, t, v) => a.tone(t, 170, 0.9, { type: 'sawtooth', vol: 0.11 * v, slide: 115, filter: 700, attack: 0.12 }),
   // "Muak": chasquido corto + tonito que sube
   kiss: (a, t, v) => {

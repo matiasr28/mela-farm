@@ -2,7 +2,7 @@
 // un producto en el pallet de salida (gallinas: maíz → huevos, vacas: maíz → leche).
 import * as THREE from 'three';
 import {
-  createChicken, createCow, createSheep, createCoopHouse, createBarnHouse, createTrough, createPallet,
+  createChicken, createCow, createSheep, createGoat, createBee, createHiveHouse, createCoopHouse, createBarnHouse, createTrough, createPallet,
   createFenceLine, createItem, mat,
 } from '../models/Models.js';
 import { Pile } from '../systems/Pile.js';
@@ -56,7 +56,7 @@ export class ProductionUnit {
     ];
 
     // Casita al fondo
-    const h = house === 'barn' ? createBarnHouse() : createCoopHouse();
+    const h = house === 'barn' ? createBarnHouse() : house === 'hive' ? createHiveHouse() : createCoopHouse();
     h.position.set(house === 'barn' ? -hw + 2.0 : -hw + 1.6, 0, -hd + 1.3);
     this.group.add(h);
 
@@ -105,7 +105,8 @@ export class ProductionUnit {
 
   addAnimals(n, instant = false) {
     for (let i = 0; i < n; i++) {
-      const a = this.animalKind === 'cow' ? createCow() : this.animalKind === 'sheep' ? createSheep() : createChicken();
+      const a = this.animalKind === 'cow' ? createCow() : this.animalKind === 'sheep' ? createSheep()
+        : this.animalKind === 'goat' ? createGoat() : this.animalKind === 'bee' ? createBee() : createChicken();
       this.randomSpot(a.root.position);
       a.root.rotation.y = rand(0, Math.PI * 2);
       this.group.add(a.root);
@@ -116,7 +117,7 @@ export class ProductionUnit {
         wait: rand(0, 2),
         hop: 0,
         phase: rand(0, 6),
-        speed: this.animalKind === 'chicken' ? 1.1 : 0.7,
+        speed: this.animalKind === 'chicken' ? 1.1 : this.animalKind === 'bee' ? 1.4 : 0.7,
       });
     }
   }
@@ -144,6 +145,14 @@ export class ProductionUnit {
       a.phase += dt * (walking ? 12 : 2);
       a.hop = Math.max(0, a.hop - dt);
       const hopY = a.hop > 0 ? Math.sin((a.hop / 0.35) * Math.PI) * 0.35 : 0;
+      if (a.wings) {
+        // Abejas: vuelan bajito, suben y bajan y aletean rápido
+        a.body.position.y = 0.75 + Math.sin(a.phase * 0.35) * 0.18 + hopY;
+        const flap = Math.sin(this.game.time * 45 + a.phase) * 0.7;
+        a.wings[0].rotation.z = flap;
+        a.wings[1].rotation.z = -flap;
+        continue;
+      }
       a.body.position.y = (walking ? Math.abs(Math.sin(a.phase)) * 0.06 : 0) + hopY;
       a.body.rotation.x = walking ? 0 : Math.sin(a.phase) * 0.05; // picoteo / respiración
     }
@@ -166,7 +175,7 @@ export class ProductionUnit {
     a.hop = 0.35;
     a.root.getWorldPosition(_v);
     const animalPos = _v.clone();
-    const sound = { cow: 'moo', sheep: 'baa' }[this.animalKind] ?? 'cluck';
+    const sound = { cow: 'moo', sheep: 'baa', goat: 'baa', bee: 'buzz' }[this.animalKind] ?? 'cluck';
     this.game.audio.play(sound, { pos: animalPos });
 
     // El animal "come" un ítem del comedero

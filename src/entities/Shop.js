@@ -95,6 +95,7 @@ export class Shop {
     this.spawnTimer = 1.5;
     this.serveTimer = 0;
     this.hasCashier = false;
+    this.autoBank = false; // Gerencia Nv.2
     this.sales = 0;
     this.waitTime = 0; // cuánto lleva el primero de la fila esperando (para charlas/pistas)
     game.add(this);
@@ -171,7 +172,11 @@ export class Shop {
   checkout(c) {
     const amount = Math.round(c.total * this.game.saleMult());
     const from = c.position.clone().setY(1.2);
-    this.cashPile.addMoney(amount, from);
+    if (this.autoBank) {
+      // Gerencia Nv.2 "Caja propia": la venta entra directo a la plata (nadie tiene que ir a juntarla)
+      this.game.addMoney(amount);
+      this.game.emit('earn', { amount });
+    } else this.cashPile.addMoney(amount, from);
     this.game.audio.play('register', { pos: from });
     this.game.fx.floatText(`+$${amount}`, from.clone().setY(2.6), '#9bff8a');
     for (const [t, n] of Object.entries(c.wants)) this.game.emit('sell', { type: t, n });

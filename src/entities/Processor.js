@@ -1,5 +1,5 @@
 // Processor: taller que transforma insumos en un producto según una receta.
-//   Panadería:  🌾 → 🍞      Dulcería: 🎃 → 🍯      Pastelería: 🥚 + 🥛 + 🌾 → 🎂
+//   Panadería:  🌾 → 🍞      Dulcería: 🎃 → 🥫      Pastelería: 🥚 + 🥛 + 🌾 → 🎂
 // Los insumos se dejan en la mesa (zona ⬇) y el producto sale en el pallet (zona ⬆).
 // Expone la misma interfaz que ProductionUnit (dropZone, pickupZone, outputPile, outputType)
 // para que los trabajadores puedan usarlo sin cambios.
@@ -16,8 +16,8 @@ export class Processor {
    * @param {string} opts.output  tipo de ítem producido
    */
   constructor(game, {
-    position, recipe, output, produceTime = 3, name = 'TALLER', look = {}, inputMax = 10, outputMax = 20,
-    outputPile = {}, inputRoles = ['player'], outputRoles = ['player'],
+    position, recipe, output, produceTime = 3, name = 'TALLER', look = {}, inputMax = 20, outputMax = 20,
+    outputPile = {}, inputRoles = ['player'], outputRoles = ['player'], model = null, labelY = 4.4,
   }) {
     this.game = game;
     this.recipe = recipe;
@@ -32,12 +32,13 @@ export class Processor {
     this.group = new THREE.Group();
     this.group.position.copy(position);
     game.scene.add(this.group);
-    this.building = createWorkshop(look);
+    // Edificio propio (ej. el Molino) o el taller genérico
+    this.building = model ? model() : createWorkshop(look);
     this.group.add(this.building);
     game.obstacles.push({ minX: position.x - 2.1, maxX: position.x + 2.1, minZ: position.z - 1.5, maxZ: position.z + 1.6 });
 
     const label = makeTextSprite(`${ITEMS[output].emoji} ${name}`, { color: '#ffffff', stroke: '#6b3a1a', worldHeight: 0.55 });
-    label.sprite.position.set(position.x, 4.4, position.z + 0.6);
+    label.sprite.position.set(position.x, labelY, position.z + 0.6);
     game.scene.add(label.sprite);
 
     // Mesa con una pila por insumo
@@ -51,7 +52,7 @@ export class Processor {
       const off = (i - (types.length - 1) / 2) * 0.75;
       this.inputs[t] = new Pile(game, {
         position: new THREE.Vector3(position.x + tableX + off, 0.56, position.z + 2.15), type: t,
-        cols: 1, rows: 1, max: inputMax,
+        cols: 1, rows: 2, spacing: [0.5, 0.36], max: inputMax, // dos columnas para que no quede una torre
       });
     });
     const sink = {
@@ -102,7 +103,10 @@ export class Processor {
     this.working = Math.max(0, this.working - dt);
     const k = this.working > 0 ? Math.sin(this.game.time * 14) * 0.015 : 0;
     this.building.scale.set(1 - k, 1 + k, 1 - k);
-    if (this.working > 0) {
+    // Aspas del molino: giran lento siempre y rápido mientras muele
+    const spin = this.building.userData.spin;
+    if (spin) spin.rotation.z += dt * (this.working > 0 ? 3.2 : 0.5);
+    if (this.working > 0 && this.building.userData.chimney) {
       this.smokeTimer -= dt;
       if (this.smokeTimer <= 0) { this.smokeTimer = 0.35; this.puff(); }
     }

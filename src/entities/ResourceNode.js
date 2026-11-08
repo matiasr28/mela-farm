@@ -3,7 +3,7 @@
 // automáticamente la planta madura más cercana (si su `harvestTypes` lo permite).
 import * as THREE from 'three';
 import {
-  createCornPlant, createWheatPlant, createPumpkinPlant, createStrawberryPlant, createAppleTree, createItem, mat, C,
+  createCornPlant, createWheatPlant, createPumpkinPlant, createStrawberryPlant, createAppleTree, createSunflowerPlant, createGrassPlant, createFlowerPlant, createFishSpot, createItem, mat, C,
 } from '../models/Models.js';
 import { CONFIG } from '../config.js';
 
@@ -15,6 +15,10 @@ const CROPS = {
   pumpkin: { plant: createPumpkinPlant, soil: '#7d5233', furrow: '#65411f' },
   strawberry: { plant: createStrawberryPlant, soil: '#8a5a3a', furrow: '#6e4426' },
   apple: { plant: createAppleTree, soil: '#7fae4a', furrow: '#6c9a3c' },
+  sunflower: { plant: createSunflowerPlant, soil: '#7a4f2e', furrow: '#5f3c21' },
+  grass: { plant: createGrassPlant, soil: '#8a6a3a', furrow: '#6f5530' },
+  flower: { plant: createFlowerPlant, soil: '#6b4a2e', furrow: '#553a22' },
+  fish: { plant: createFishSpot, soil: '#5fb3e0', furrow: '#4a9fd0' }, // orilla de la laguna (agua bajita)
 };
 
 export class ResourceNode {
@@ -86,6 +90,8 @@ export class ResourceNode {
         }
       }
       p.group.rotation.z = Math.sin(time * 1.7 + p.phase) * 0.04;
+      // Los peces listos para pescar saltan en el agua
+      if (this.type === 'fish' && p.grown) p.cob.position.y = Math.max(0, Math.sin(time * 2.6 + p.phase)) * 0.35;
     }
 
     // Cosecha automática por proximidad
