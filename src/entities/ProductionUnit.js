@@ -6,6 +6,7 @@ import {
   createFenceLine, createItem, mat,
 } from '../models/Models.js';
 import { Pile } from '../systems/Pile.js';
+import { bakeGroup } from '../core/Bake.js';
 import { TransferZone } from '../systems/TransferZone.js';
 import { rand, pick, lerpAngle } from '../utils.js';
 
@@ -93,6 +94,7 @@ export class ProductionUnit {
       target: this.outputPile, roles: outputRoles,
     });
 
+    bakeGroup(this.group); // piso, cerco, casita, comedero y pallet: un solo mesh
     this.animals = [];
     this.addAnimals(animalCount, true);
     game.add(this);
@@ -107,6 +109,7 @@ export class ProductionUnit {
     for (let i = 0; i < n; i++) {
       const a = this.animalKind === 'cow' ? createCow() : this.animalKind === 'sheep' ? createSheep()
         : this.animalKind === 'goat' ? createGoat() : this.animalKind === 'bee' ? createBee() : createChicken();
+      bakeGroup(a.body, { keep: a.wings ?? [] });
       this.randomSpot(a.root.position);
       a.root.rotation.y = rand(0, Math.PI * 2);
       this.group.add(a.root);

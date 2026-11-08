@@ -2,12 +2,13 @@
 // Estanterías por producto, zona de reposición, lugar del cajero, fila de clientes y
 // pila de billetes. Para atender hace falta alguien en la caja: Mela o un cajero.
 import * as THREE from 'three';
-import { createCounter, mat, ITEMS } from '../models/Models.js';
+import { createCounter, createShopFront, mat, ITEMS } from '../models/Models.js';
 import { Pile } from '../systems/Pile.js';
 import { CashPile } from '../systems/CashPile.js';
 import { TransferZone } from '../systems/TransferZone.js';
 import { GroundDecal, FONT, makeTextSprite } from '../core/Labels.js';
 import { QueueSystem } from './QueueSystem.js';
+import { bakeGroup } from '../core/Bake.js';
 import { CustomerAI } from './CustomerAI.js';
 import { CONFIG } from '../config.js';
 import { rand, randInt, distXZ2 } from '../utils.js';
@@ -20,19 +21,24 @@ export class Shop {
    */
   constructor(game, {
     position, products, name = 'TIENDA', spawnPoint, exitPoint, queueSize = CONFIG.shop.queueSize, instant = true,
+    look = {},
   }) {
     this.game = game;
     this.position = position.clone();
     this.products = products;
 
-    const counter = createCounter();
+    // Puesto: mostrador + frente (tarima, pared con estantes, toldo y cartel), horneados juntos
+    const counter = new THREE.Group();
+    counter.add(createCounter(), createShopFront(look));
+    bakeGroup(counter);
     counter.position.copy(position);
     game.scene.add(counter);
     if (!instant) game.fx.popIn(counter);
     game.obstacles.push({ minX: position.x - 1.8, maxX: position.x + 1.8, minZ: position.z - 0.62, maxZ: position.z + 0.62 });
 
-    const sign = makeTextSprite(name, { color: '#ffffff', stroke: '#b5302a', worldHeight: 0.5 });
-    sign.sprite.position.set(position.x, 2.6, position.z - 0.4);
+    game.obstacles.push({ minX: position.x - 2.75, maxX: position.x + 2.75, minZ: position.z - 2.35, maxZ: position.z - 2.05 });
+    const sign = makeTextSprite(name, { color: look.trim ?? '#d9473b', stroke: '#ffffff', worldHeight: 0.42 });
+    sign.sprite.position.set(position.x, 3.04, position.z - 2.0);
     game.scene.add(sign.sprite);
 
     // Estanterías sobre el mostrador (una pila por producto)
@@ -71,7 +77,7 @@ export class Shop {
         ctx.fillText('💲', W / 2, H / 2 + 6);
       }
     });
-    this.cashierDecal.mesh.position.set(this.cashierSpot.x, 0.03, this.cashierSpot.z);
+    this.cashierDecal.mesh.position.set(this.cashierSpot.x, 0.065, this.cashierSpot.z);
     game.scene.add(this.cashierDecal.mesh);
     this.cashierOn = false;
 

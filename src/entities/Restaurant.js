@@ -4,12 +4,13 @@
 //   Despensa: 🥐 🥛 🍞 🧀 🐟 🎃 🎂 🍦   →   🥞 🥪 🍲 🍨
 import * as THREE from 'three';
 import { Character } from './Character.js';
-import { createWorkshop, createTable, createItem, mat, ITEMS } from '../models/Models.js';
+import { createWorkshop, createTable, createDeck, createItem, mat, ITEMS } from '../models/Models.js';
 import { Pile } from '../systems/Pile.js';
 import { CashPile } from '../systems/CashPile.js';
 import { TransferZone } from '../systems/TransferZone.js';
 import { CanvasLabel, drawOrderBubble, makeTextSprite } from '../core/Labels.js';
 import { rand, pick, lerpAngle, distXZ2 } from '../utils.js';
+import { bakeGroup } from '../core/Bake.js';
 
 /** Platos del menú: ingredientes de dos negocios distintos de la granja. */
 export const DISHES = {
@@ -78,7 +79,14 @@ class Diner {
       this.root.rotation.y = lerpAngle(this.root.rotation.y, Math.atan2(tx, tz), 1 - Math.exp(-dt * 8));
     }
     this.character.animate(dt, moving ? this.speed / 5.5 : 0);
-    this.bubble.sprite.position.set(this.position.x, 2.35, this.position.z);
+    if (!moving && (this.state === 'wait' || this.state === 'eat')) {
+      // Sentado: piernas hacia adelante (bajo la mesa) y brazos sobre la mesa
+      const c = this.character;
+      c.legL.rotation.x = c.legR.rotation.x = -1.45;
+      c.body.position.y = -0.07;
+      c.armL.rotation.x = c.armR.rotation.x = this.state === 'eat' ? -1.1 + Math.sin(this.game.time * 6) * 0.25 : -0.75;
+    }
+    this.bubble.sprite.position.set(this.position.x, 2.2, this.position.z);
 
     if (this.state === 'walk' && d < 0.06) {
       this.state = 'wait';
@@ -135,6 +143,7 @@ export class Restaurant {
     const b = createWorkshop({ wall: '#fff4e6', roofColor: '#7b2cbf', awning: ['#ffffff', '#7b2cbf'] });
     b.scale.setScalar(1.35);
     this.group.add(b);
+    bakeGroup(this.group);
     game.scene.add(this.group);
     game.obstacles.push({ minX: P.x - 2.9, maxX: P.x + 2.9, minZ: P.z - 2.1, maxZ: P.z + 2.2 });
     const sign = makeTextSprite('🍽️ RESTAURANTE', { color: '#ffffff', stroke: '#4a1a7a', worldHeight: 0.7 });
@@ -145,7 +154,7 @@ export class Restaurant {
     // Despensa: una pila por ingrediente
     const pantryX = P.x - 5.4;
     const pantryZ = P.z + 3.6;
-    const table = createTable(PANTRY.length * 0.6 + 0.3);
+    const table = bakeGroup(createTable(PANTRY.length * 0.6 + 0.3));
     table.position.set(pantryX, 0, pantryZ);
     game.scene.add(table);
     this.inputs = {};
@@ -164,7 +173,7 @@ export class Restaurant {
 
     // Pasaplatos: un lugar por plato
     const passX = P.x + 3.6;
-    const pass = createTable(2.7);
+    const pass = bakeGroup(createTable(2.7));
     pass.position.set(passX, 0, pantryZ);
     game.scene.add(pass);
     this.pass = {};
@@ -191,8 +200,58 @@ export class Restaurant {
     this.exit = V(-50.5, -67);
     this.slots = [];
     for (const z of [-64.6, -59.6]) for (const x of [-29.6, -25.6, -21.6, -17.6]) this.slots.push(V(x, z));
+    this.buildTerrace();
     this.addTables(4, instant);
     game.add(this);
+  }
+
+  /** Deck de madera bajo todas las mesas y guirnaldas de luces entre postes. */
+  buildTerrace() {
+    const x0 = -31.6;
+    const x1 = -15.6;
+    const z0 = -66.4;
+    const z1 = -57.8;
+    const deck = createDeck(x1 - x0, z1 - z0);
+    deck.position.set((x0 + x1) / 2, 0, (z0 + z1) / 2);
+    const posts = new THREE.Group();
+    const corners = [[x0 + 0.3, z0 + 0.3], [x1 - 0.3, z0 + 0.3], [x1 - 0.3, z1 - 0.3], [x0 + 0.3, z1 - 0.3]];
+    for (const [x, z] of corners) {
+      const p = new THREE.Group();
+      p.position.set(x, 0, z);
+      p.add(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 2.8, 8), mat('#5c4033')));
+      p.children[0].position.y = 1.4;
+      const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.26, 0.45, 12), mat('#c2693c'));
+      pot.position.y = 0.3;
+      const bush = new THREE.Mesh(new THREE.SphereGeometry(0.34, 10, 8), mat('#4aa63c'));
+      bush.position.y = 0.66;
+      p.add(pot, bush);
+      posts.add(p);
+    }
+    const g = new THREE.Group();
+    g.add(deck, posts);
+    bakeGroup(g);
+    this.game.scene.add(g);
+    // Guirnaldas: cable con caída entre postes y lamparitas que brillan (todas en un solo mesh instanciado)
+    const bulbs = [];
+    const wireMat = mat('#3a3a3a');
+    for (let k = 0; k < 4; k++) {
+      const [ax, az] = corners[k];
+      const [bx, bz] = corners[(k + 1) % 4];
+      const pts = [];
+      for (let i = 0; i <= 16; i++) {
+        const t = i / 16;
+        const sag = Math.sin(t * Math.PI) * 0.45;
+        pts.push(new THREE.Vector3(ax + (bx - ax) * t, 2.7 - sag, az + (bz - az) * t));
+        if (i > 0 && i < 16) bulbs.push(pts[i].clone().add(new THREE.Vector3(0, -0.09, 0)));
+      }
+      const wire = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 32, 0.015, 4), wireMat);
+      this.game.scene.add(wire);
+    }
+    const bulbMat = new THREE.MeshStandardMaterial({ color: '#fff3c4', emissive: '#ffc85a', emissiveIntensity: 1.1, roughness: 0.4 });
+    const inst = new THREE.InstancedMesh(new THREE.SphereGeometry(0.075, 8, 6), bulbMat, bulbs.length);
+    const m4 = new THREE.Matrix4();
+    bulbs.forEach((p, i) => inst.setMatrixAt(i, m4.makeTranslation(p.x, p.y, p.z)));
+    this.game.scene.add(inst);
   }
 
   /** Mesa redonda con dos sillas; el comensal se sienta del lado de atrás. */
@@ -226,6 +285,7 @@ export class Restaurant {
       const umb = new THREE.Mesh(new THREE.ConeGeometry(0.8, 0.4, 10), mat(this.tables.length % 2 ? '#ffcf3a' : '#7b2cbf'));
       umb.position.y = 2.85;
       g.add(pole, umb);
+      bakeGroup(g);
       this.game.scene.add(g);
       if (!instant) this.game.fx.popIn(g);
       this.game.obstacles.push({ minX: pos.x - 0.55, maxX: pos.x + 0.55, minZ: pos.z - 0.55, maxZ: pos.z + 0.55 });

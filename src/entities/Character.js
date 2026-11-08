@@ -59,7 +59,7 @@ export class Character {
   kissPose(k, arms = 'waist') {
     if (k <= 0.001) {
       if (this._kissed) {
-        this.eyes.forEach((e) => { e.scale.y = 1.35; });
+        this.eyes.forEach((e) => { e.scale.y = e.userData.sy ?? 1; });
         this.shines.forEach((s) => { s.visible = true; });
         this.head.rotation.x = 0;
         this._kissed = false;
@@ -72,7 +72,7 @@ export class Character {
     this.body.rotation.x = mix(this.body.rotation.x, 0.1);
     this.head.rotation.x = mix(0, 0.1);
     this.head.rotation.z = mix(this.head.rotation.z, -0.32); // cabeza ladeada (los dos al mismo lado propio)
-    this.eyes.forEach((e) => { e.scale.y = 1.35 * (1 - 0.85 * s); });
+    this.eyes.forEach((e) => { e.scale.y = (e.userData.sy ?? 1) * (1 - 0.85 * s); });
     this.shines.forEach((sh) => { sh.visible = s < 0.5; });
     if (arms === 'neck') {
       this.body.position.y += 0.05 * s; // en puntas de pie

@@ -4,6 +4,8 @@ import { Pile } from './Pile.js';
 import { createItem } from '../models/Models.js';
 import { GroundDecal, roundRect } from '../core/Labels.js';
 
+const VISIBLE_MAX = 48; // fajos visibles como máximo por pila
+
 export class CashPile extends Pile {
   constructor(game, { position, radius = 1.5 }) {
     super(game, {
@@ -26,7 +28,7 @@ export class CashPile extends Pile {
       ctx.strokeStyle = '#3fd8ff';
       ctx.stroke();
     });
-    this.base.mesh.position.set(position.x, 0.02, position.z);
+    this.base.mesh.position.set(position.x, 0.062, position.z);
     game.scene.add(this.base.mesh);
   }
 
@@ -53,6 +55,17 @@ export class CashPile extends Pile {
       const q = this.queue.shift();
       const mesh = createItem('cash');
       mesh.position.copy(q.from);
+      // Tope visual: pasados VISIBLE_MAX fajos, la plata se suma a los que ya están (no crece la torre,
+      // que con miles de billetes sin juntar era lo más pesado de dibujar). El valor no se pierde.
+      const top = this.items.length >= VISIBLE_MAX ? this.items[(this.bump = ((this.bump ?? 0) + 1) % this.items.length)] : null;
+      if (top) {
+        top.value = (top.value ?? 0) + q.value;
+        this.game.scene.add(mesh);
+        this.game.fx.fly(mesh, (out) => this.root.localToWorld(this.slot(this.items.length - 1, out)), {
+          duration: 0.35, arc: 1.5, onDone: (m) => m.removeFromParent(),
+        });
+        continue;
+      }
       const e = this.receive('cash', mesh, { duration: 0.35, arc: 1.5 });
       e.value = q.value;
     }

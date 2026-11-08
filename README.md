@@ -74,12 +74,13 @@ En la consola del navegador: `game.addMoney(1000)` para probar.
 ## Arquitectura (`src/`)
 | Archivo | Rol |
 |---|---|
-| `core/Game.js` | Renderer, escena, cámara, luces, loop, economía |
+| `core/Game.js` | Renderer (con resolución adaptativa si los cuadros tardan), escena, cámara, luces, loop, economía |
+| `core/Bake.js` | "Horneado": fusiona las primitivas de cada modelo en un mesh con color por vértice (personajes por partes, ítems y plantas desde plantillas, decoración por zonas del mapa). Pasó de ~42.000 objetos a ~2.800 en la Granja 10 |
 | `core/Input.js` | Joystick virtual + teclado |
 | `core/Audio.js` | Música (loop country) y efectos sintetizados; mute guardado |
 | `core/Fx.js` | Ítems volando en arco, tweens, textos flotantes, confeti |
 | `core/Labels.js` | Sprites y calcomanías de suelo con Canvas 2D |
-| `models/Models.js` | Todos los modelos low-poly (primitivas, con caché) + definición de ítems/precios |
+| `models/Models.js` | Todos los modelos low-poly (primitivas, con caché): personajes, frentes de tienda (tarima, estantes, toldo y cartel), patios de talleres, deck del restaurante + definición de ítems/precios |
 | `entities/PlayerController.js` | Movimiento, colisiones AABB, límites, cartel MAX |
 | `systems/StackManager.js` | Pila en la espalda: posiciones, entrada/salida animada, bamboleo con resorte |
 | `systems/Pile.js` / `CashPile.js` | Almacenes en el mundo (grilla apilada) / billetes recolectables |

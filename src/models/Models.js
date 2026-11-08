@@ -3,6 +3,7 @@
 // Geometrías y materiales se cachean para que cientos de ítems sean baratos.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { bakeTemplate, bakeGroup, BAKED_MAT } from '../core/Bake.js';
 
 export const C = {
   grass: '#6cc24a',
@@ -61,7 +62,7 @@ function finish(m, x, y, z) {
 /** Caja con bordes redondeados (da el look "juguete"). */
 export function box(w, h, d, color, x = 0, y = 0, z = 0) {
   const r = Math.min(0.07, Math.min(w, h, d) * 0.22);
-  const g = geo(`b${w},${h},${d}`, () => new RoundedBoxGeometry(w, h, d, 2, r));
+  const g = geo(`b${w},${h},${d}`, () => new RoundedBoxGeometry(w, h, d, 1, r)); // 1 segmento: casi igual y 1/3 de triángulos
   return finish(new THREE.Mesh(g, mat(color)), x, y, z);
 }
 
@@ -550,7 +551,12 @@ export const ITEMS = {
   cash: { height: 0.11, price: 1, emoji: '💵', name: 'plata', create: createCashItem },
 };
 
-export const createItem = (type) => ITEMS[type].create();
+/** Ítem listo para apilar: un solo mesh horneado (la geometría se comparte entre todos los del mismo tipo). */
+export function createItem(type) {
+  const m = new THREE.Mesh(bakeTemplate(`item:${type}`, () => ITEMS[type].create()), BAKED_MAT);
+  m.receiveShadow = true; // no proyectan sombra: son cientos y muy chicos
+  return m;
+}
 
 // =====================================================================
 // CULTIVO
@@ -684,7 +690,7 @@ export function createGrassPlant() {
   return { group: g, cob: tops };
 }
 
-export function createFlowerPlant() {
+export function createFlowerPlant(variant = Math.floor(Math.random() * FLOWER_COLORS.length)) {
   // Tulipán de color al azar con dos hojas
   const g = new THREE.Group();
   g.add(cyl(0.025, 0.03, 0.6, 6, '#4f9e2c', 0, 0.3, 0));
@@ -695,7 +701,7 @@ export function createFlowerPlant() {
     g.add(leaf);
   }
   const bloom = new THREE.Group();
-  const c = FLOWER_COLORS[Math.floor(Math.random() * FLOWER_COLORS.length)];
+  const c = FLOWER_COLORS[variant % FLOWER_COLORS.length];
   for (let i = 0; i < 3; i++) {
     const petal = sphere(0.09, c, Math.cos(i * 2.1) * 0.04, 0.68, Math.sin(i * 2.1) * 0.04, 10, 8);
     petal.scale.set(0.8, 1.3, 0.8);
@@ -743,9 +749,17 @@ export function createDuck() {
 // =====================================================================
 // PERSONAJES
 // =====================================================================
+/** Mismo color, más claro (l > 0) u oscuro (l < 0). */
+function shade(hex, l) {
+  const c = new THREE.Color(hex);
+  c.offsetHSL(0, 0, l);
+  return `#${c.getHexString()}`;
+}
+
 /**
- * Personaje cartoon con extremidades articuladas.
- * hairStyle: 'short' | 'ponytail' | 'long' | 'bun' | 'bald'
+ * Personaje cartoon con extremidades articuladas (cabeza grande, ojos expresivos, manos y zapatillas).
+ * hairStyle: 'short' | 'ponytail' | 'long' | 'bun' | 'bald' | 'curly'
+ * Al final se hornea por partes rígidas (cuerpo, cada pierna, cada brazo, cabeza): ~11 draw calls por personaje.
  */
 export function createCharacterRig({
   shirt = '#3b82f6', pants = '#2f4a7a', skin = '#f5c9a0', hair = '#5a3a22', hairStyle = 'short',
@@ -756,127 +770,183 @@ export function createCharacterRig({
   const body = new THREE.Group();
   root.add(body);
   const legColor = overalls || pants;
+  const skinDark = shade(skin, -0.08);
+  const brow = hairStyle === 'bald' ? '#6b4a2b' : shade(hair, -0.05);
 
+  // ---- Piernas (pivote en la cadera) con zapatillas de suela clara ----
   const leg = (x) => {
     const p = new THREE.Group();
     p.position.set(x, 0.52, 0);
-    p.add(capsule(0.085, 0.3, legColor, 0, -0.22, 0));
-    p.add(box(0.15, 0.09, 0.24, shoes, 0, -0.47, 0.04));
+    p.add(capsule(0.088, 0.28, legColor, 0, -0.21, 0));
+    p.add(cyl(0.094, 0.098, 0.05, 12, shade(legColor, -0.06), 0, -0.34, 0)); // ruedo
+    const shoe = capsule(0.075, 0.12, shoes, 0, -0.45, 0.05);
+    shoe.rotation.x = Math.PI / 2;
+    shoe.scale.set(1.15, 1, 0.85);
+    p.add(shoe);
+    const sole = box(0.17, 0.035, 0.29, '#f4efe6', 0, -0.505, 0.05);
+    p.add(sole);
     body.add(p);
     return p;
   };
   const legL = leg(-0.1);
   const legR = leg(0.1);
-  body.add(box(0.36, 0.2, 0.24, legColor, 0, 0.6, 0)); // cadera
 
-  const torso = capsule(0.16, 0.2, shirt, 0, 0.86, 0);
-  torso.scale.set(1.12, 1, 0.82);
+  // ---- Cadera, cinturón y torso ----
+  body.add(box(0.36, 0.2, 0.25, legColor, 0, 0.6, 0));
+  if (!overalls) body.add(box(0.37, 0.045, 0.26, shade(pants, -0.12), 0, 0.69, 0)); // cinturón
+  const torso = capsule(0.165, 0.2, shirt, 0, 0.88, 0);
+  torso.scale.set(1.12, 1, 0.84);
   body.add(torso);
+  const hem = cyl(0.19, 0.2, 0.06, 16, shade(shirt, -0.05), 0, 0.71, 0); // ruedo de la remera
+  hem.scale.set(1, 1, 0.8);
+  body.add(hem);
+  // Cuello de la remera
+  const collar = new THREE.Mesh(geo('collar', () => new THREE.TorusGeometry(0.075, 0.022, 6, 14)), mat(shade(shirt, 0.08)));
+  collar.rotation.x = Math.PI / 2;
+  collar.position.set(0, 1.1, 0.01);
+  body.add(collar);
   if (overalls) {
-    body.add(box(0.26, 0.22, 0.06, overalls, 0, 0.84, 0.12));
-    body.add(box(0.05, 0.22, 0.04, overalls, -0.1, 1.0, 0.1));
-    body.add(box(0.05, 0.22, 0.04, overalls, 0.1, 1.0, 0.1));
-    body.add(sphere(0.022, '#ffd23f', -0.1, 0.93, 0.155));
-    body.add(sphere(0.022, '#ffd23f', 0.1, 0.93, 0.155));
+    body.add(box(0.27, 0.24, 0.06, overalls, 0, 0.86, 0.13));
+    body.add(box(0.1, 0.07, 0.02, shade(overalls, -0.08), 0, 0.88, 0.165)); // bolsillo
+    body.add(box(0.05, 0.24, 0.04, overalls, -0.1, 1.0, 0.11));
+    body.add(box(0.05, 0.24, 0.04, overalls, 0.1, 1.0, 0.11));
+    body.add(sphere(0.022, '#ffd23f', -0.1, 0.95, 0.16, 8, 6));
+    body.add(sphere(0.022, '#ffd23f', 0.1, 0.95, 0.16, 8, 6));
   }
 
+  // ---- Brazos (pivote en el hombro) con manga, mano y pulgar ----
   const arm = (x) => {
     const p = new THREE.Group();
     p.position.set(x, 1.04, 0);
-    p.add(capsule(0.065, 0.12, shirt, 0, -0.08, 0));
-    p.add(capsule(0.055, 0.18, skin, 0, -0.26, 0));
-    p.add(sphere(0.062, skin, 0, -0.39, 0));
+    p.add(sphere(0.068, shirt, 0, -0.02, 0, 12, 10)); // hombro
+    p.add(capsule(0.068, 0.11, shirt, 0, -0.09, 0));
+    p.add(capsule(0.052, 0.17, skin, 0, -0.26, 0));
+    const hand = sphere(0.064, skin, 0, -0.39, 0.005, 12, 10);
+    hand.scale.set(0.95, 1.05, 0.85);
+    p.add(hand);
+    p.add(sphere(0.027, skin, -Math.sign(x) * 0.05, -0.37, 0.035, 8, 6)); // pulgar
     body.add(p);
     return p;
   };
-  const armL = arm(-0.24);
-  const armR = arm(0.24);
-  body.add(cyl(0.06, 0.06, 0.1, 12, skin, 0, 1.14, 0)); // cuello
+  const armL = arm(-0.245);
+  const armR = arm(0.245);
+  body.add(cyl(0.062, 0.066, 0.1, 12, skin, 0, 1.15, 0)); // cuello
 
   // ---- Cabeza ----
   const head = new THREE.Group();
-  head.position.set(0, 1.34, 0);
+  head.position.set(0, 1.37, 0);
   body.add(head);
-  const skull = sphere(0.2, skin);
-  skull.scale.set(1, 1.04, 0.98);
+  const skull = sphere(0.225, skin, 0, 0, 0, 20, 16);
+  skull.scale.set(1, 0.98, 0.96);
   head.add(skull);
+  for (const s of [-1, 1]) head.add(sphere(0.045, skinDark, s * 0.215, -0.01, 0, 10, 8)); // orejas
+
+  // Ojos: puntito oscuro ovalado con un brillo (el parpadeo los achata en Y)
   const eyes = [];
   const shines = [];
   for (const x of [-0.07, 0.07]) {
-    const eye = sphere(0.027, '#2a1a10', x, 0.0, 0.18, 10, 8);
+    const eye = sphere(0.027, '#2a1a10', x, 0.0, 0.201, 10, 8);
     eye.scale.y = 1.35;
     head.add(eye);
     eyes.push(eye);
-    const shine = sphere(0.009, '#ffffff', x + 0.01, 0.013, 0.205, 6, 4);
+    const shine = sphere(0.009, '#ffffff', x + 0.01, 0.013, 0.226, 6, 4);
     head.add(shine);
     shines.push(shine);
-    const blush = sphere(0.032, '#f7a1a1', x * 1.75, -0.05, 0.155, 10, 8);
-    blush.scale.set(1, 0.6, 0.4);
+    // Ceja y cachete
+    const b = capsule(0.011, 0.05, brow, x * 1.02, 0.085, 0.2);
+    b.rotation.z = Math.PI / 2 + (x < 0 ? 0.12 : -0.12);
+    head.add(b);
+    const blush = sphere(0.036, '#f7a1a1', x * 1.75, -0.065, 0.17, 10, 8);
+    blush.scale.set(1, 0.55, 0.35);
     head.add(blush);
-    head.add(box(0.07, 0.016, 0.012, hairStyle === 'bald' ? '#6b4a2b' : hair, x, 0.075, 0.19));
   }
-  head.add(sphere(0.026, skin, 0, -0.03, 0.2, 10, 8));
-  head.add(box(0.07, 0.016, 0.012, '#c0504d', 0, -0.09, 0.19));
+  head.add(sphere(0.019, shade(skin, -0.03), 0, -0.04, 0.218, 10, 8)); // nariz
+  // Sonrisa
+  const smile = new THREE.Mesh(geo('smile', () => new THREE.TorusGeometry(0.04, 0.011, 6, 12, Math.PI)), mat('#b03a3a'));
+  smile.position.set(0, -0.085, 0.205);
+  smile.rotation.set(-0.15, 0, Math.PI);
+  head.add(smile);
 
+  // ---- Pelo ----
   let tail = null;
-  if (hairStyle !== 'bald') {
-    const cap = sphere(0.218, hair, 0, 0.055, -0.05);
+  if (hairStyle !== 'bald' && hairStyle !== 'curly') {
+    const cap = sphere(0.238, hair, 0, 0.06, -0.035, 20, 16);
     cap.scale.set(1.02, 0.88, 1.0);
     head.add(cap);
-    if (hairStyle !== 'short') {
+    // Patillas
+    for (const s of [-1, 1]) {
+      const side = sphere(0.075, hair, s * 0.2, 0.0, 0.02, 10, 8);
+      side.scale.set(0.55, 1.2, 0.9);
+      head.add(side);
+    }
+    if (hairStyle === 'short') {
+      // Flequillo en mechones
+      for (const [x, y, r] of [[-0.11, 0.15, 0.075], [-0.03, 0.17, 0.08], [0.06, 0.165, 0.078], [0.13, 0.135, 0.065]]) {
+        const tuft = sphere(r, hair, x, y, 0.15, 10, 8);
+        tuft.scale.set(1, 0.7, 0.75);
+        head.add(tuft);
+      }
+    } else {
       // Flequillo de costado
-      const bangs = sphere(0.13, hair, 0.05, 0.13, 0.11);
+      const bangs = sphere(0.15, hair, 0.05, 0.15, 0.11, 14, 10);
       bangs.scale.set(1.25, 0.5, 0.7);
-      bangs.rotation.z = -0.2;
+      bangs.rotation.z = -0.25;
       head.add(bangs);
+      const bangs2 = sphere(0.09, hair, -0.12, 0.13, 0.13, 10, 8);
+      bangs2.scale.set(1, 0.6, 0.7);
+      head.add(bangs2);
     }
   }
   if (hairStyle === 'ponytail') {
-    head.add(sphere(0.045, tie, 0, 0.1, -0.225, 10, 8));
+    head.add(sphere(0.048, tie, 0, 0.1, -0.245, 10, 8));
     tail = new THREE.Group();
-    tail.position.set(0, 0.1, -0.24);
-    const t1 = sphere(0.085, hair, 0, -0.1, -0.04);
+    tail.position.set(0, 0.1, -0.26);
+    const t1 = sphere(0.09, hair, 0, -0.1, -0.04, 12, 10);
     t1.scale.set(0.9, 1.6, 0.9);
     tail.add(t1);
-    tail.add(sphere(0.06, hair, 0, -0.25, -0.03));
+    tail.add(sphere(0.065, hair, 0, -0.26, -0.03, 10, 8));
     head.add(tail);
   } else if (hairStyle === 'long') {
-    const back = sphere(0.2, hair, 0, -0.13, -0.08);
-    back.scale.set(1.08, 1.45, 0.7);
+    const back = sphere(0.22, hair, 0, -0.14, -0.08, 16, 12);
+    back.scale.set(1.08, 1.5, 0.72);
     head.add(back);
+    for (const s of [-1, 1]) {
+      const lock = sphere(0.08, hair, s * 0.19, -0.16, 0.04, 10, 8);
+      lock.scale.set(0.7, 1.8, 0.8);
+      head.add(lock);
+    }
   } else if (hairStyle === 'bun') {
-    head.add(sphere(0.095, hair, 0, 0.25, -0.07));
+    head.add(sphere(0.1, hair, 0, 0.27, -0.07, 12, 10));
+    head.add(cyl(0.07, 0.08, 0.03, 12, tie, 0, 0.2, -0.05));
   } else if (hairStyle === 'curly') {
     // Rulos: bolitas repartidas en espiral sobre la parte de arriba, costados y nuca,
     // dejando libre la cara; algunos rulos caen sobre la frente.
     const n = 46;
     for (let i = 0; i < n; i++) {
-      const y = 1 - (i / (n - 1)) * 1.45;            // de arriba hacia la nuca
+      const y = 1 - (i / (n - 1)) * 1.45;
       const r = Math.sqrt(Math.max(0, 1 - y * y));
-      const a = i * 2.39996;                          // ángulo áureo
+      const a = i * 2.39996;
       const x = Math.cos(a) * r;
       const z = Math.sin(a) * r;
-      if (z > 0.35 && y < 0.45) continue;             // no tapar la cara
-      const s = 0.06 + ((i * 7) % 5) * 0.007;
-      head.add(sphere(s, hair, x * 0.245, 0.07 + y * 0.21, z * 0.235 - 0.02, 8, 6));
+      if (z > 0.35 && y < 0.45) continue;
+      const s = 0.065 + ((i * 7) % 5) * 0.007;
+      head.add(sphere(s, hair, x * 0.265, 0.075 + y * 0.225, z * 0.25 - 0.02, 8, 6));
     }
-    // Rulos sobre la frente y a los costados de la cara
-    for (const [x, y, z] of [[-0.09, 0.16, 0.17], [0.0, 0.18, 0.18], [0.09, 0.15, 0.17], [0.16, 0.1, 0.13],
-      [-0.2, 0.0, 0.08], [0.2, 0.0, 0.08], [-0.21, -0.08, 0.0], [0.21, -0.08, 0.0]]) {
-      head.add(sphere(0.055, hair, x, y, z, 8, 6));
+    for (const [x, y, z] of [[-0.1, 0.17, 0.18], [0.0, 0.19, 0.19], [0.1, 0.16, 0.18], [0.17, 0.11, 0.14],
+      [-0.22, 0.0, 0.08], [0.22, 0.0, 0.08], [-0.23, -0.08, 0.0], [0.23, -0.08, 0.0]]) {
+      head.add(sphere(0.058, hair, x, y, z, 8, 6));
     }
   }
 
   if (glasses) {
-    for (const x of [-0.075, 0.075]) {
-      const lens = new THREE.Mesh(geo('lens', () => new THREE.TorusGeometry(0.05, 0.011, 6, 16)), mat('#2b2b2b'));
-      lens.position.set(x, 0.005, 0.2);
+    for (const x of [-0.078, 0.078]) {
+      const lens = new THREE.Mesh(geo('lens', () => new THREE.TorusGeometry(0.052, 0.011, 6, 16)), mat('#2b2b2b'));
+      lens.position.set(x, 0.005, 0.215);
       head.add(lens);
     }
-    head.add(box(0.05, 0.012, 0.012, '#2b2b2b', 0, 0.01, 0.205));
+    head.add(box(0.05, 0.012, 0.012, '#2b2b2b', 0, 0.01, 0.22));
   }
   if (prop === 'clipboard') {
-    // Tabla con papeles en la mano izquierda
     const board = new THREE.Group();
     board.position.set(0.02, -0.36, 0.1);
     board.rotation.x = -0.9;
@@ -887,14 +957,17 @@ export function createCharacterRig({
   }
 
   if (hat === 'straw') {
-    head.add(cyl(0.38, 0.38, 0.035, 20, hatColor, 0, 0.2, -0.02));
-    head.add(cyl(0.2, 0.22, 0.16, 16, hatColor, 0, 0.29, -0.02));
-    head.add(cyl(0.222, 0.222, 0.045, 16, '#c0392b', 0, 0.24, -0.02));
+    head.add(cyl(0.4, 0.4, 0.035, 22, hatColor, 0, 0.21, -0.02));
+    head.add(cyl(0.21, 0.23, 0.17, 18, hatColor, 0, 0.3, -0.02));
+    head.add(cyl(0.233, 0.233, 0.05, 18, '#c0392b', 0, 0.25, -0.02));
   } else if (hat === 'cap') {
-    const crown = sphere(0.215, hatColor, 0, 0.09, -0.02);
+    const crown = sphere(0.235, hatColor, 0, 0.095, -0.02, 18, 14);
     crown.scale.set(1.02, 0.7, 1.02);
     head.add(crown);
-    head.add(box(0.3, 0.03, 0.18, hatColor, 0, 0.1, 0.22));
+    head.add(sphere(0.03, shade(hatColor, -0.1), 0, 0.26, -0.02, 8, 6));
+    const visor = box(0.32, 0.03, 0.2, shade(hatColor, -0.06), 0, 0.105, 0.23);
+    visor.rotation.x = 0.12;
+    head.add(visor);
   }
 
   // Anclajes para pilas: delante (como se lleva en brazos) y espalda
@@ -904,6 +977,13 @@ export function createCharacterRig({
   const backAnchor = new THREE.Group();
   backAnchor.position.set(0, 0.62, -0.36);
   body.add(backAnchor);
+
+  // ---- Horneado por partes rígidas (lo que se anima queda aparte) ----
+  for (const e of eyes) e.userData.sy = e.scale.y;
+  for (const part of [legL, legR, armL, armR]) bakeGroup(part);
+  if (tail) bakeGroup(tail);
+  bakeGroup(head, { keep: [...eyes, ...shines, tail] });
+  bakeGroup(body, { keep: [legL, legR, armL, armR, head, frontAnchor, backAnchor] });
 
   root.scale.setScalar(scale);
   return { root, body, legL, legR, armL, armR, head, tail, eyes, shines, backAnchor, frontAnchor };
@@ -1256,19 +1336,19 @@ export function createTree(scale = 1, autumn = false) {
   const c1 = autumn ? '#f39c33' : '#57b947';
   const c2 = autumn ? '#e67e22' : '#4aa63c';
   const c3 = autumn ? '#f7b24a' : '#6fcf55';
-  g.add(sphere(0.85, c2, 0, 1.6, 0));
-  g.add(sphere(0.65, c1, 0.45, 1.95, 0.15));
-  g.add(sphere(0.6, c3, -0.4, 2.05, -0.1));
-  g.add(sphere(0.5, c1, 0, 2.45, 0.05));
+  g.add(sphere(0.85, c2, 0, 1.6, 0, 12, 9));
+  g.add(sphere(0.65, c1, 0.45, 1.95, 0.15, 12, 9));
+  g.add(sphere(0.6, c3, -0.4, 2.05, -0.1, 12, 9));
+  g.add(sphere(0.5, c1, 0, 2.45, 0.05, 12, 9));
   g.scale.setScalar(scale);
   return g;
 }
 
 export function createBush(scale = 1) {
   const g = new THREE.Group();
-  g.add(sphere(0.45, '#4fae3f', 0, 0.3, 0));
-  g.add(sphere(0.35, '#63c24f', 0.35, 0.25, 0.1));
-  g.add(sphere(0.3, '#58b847', -0.32, 0.22, 0.05));
+  g.add(sphere(0.45, '#4fae3f', 0, 0.3, 0, 10, 8));
+  g.add(sphere(0.35, '#63c24f', 0.35, 0.25, 0.1, 10, 8));
+  g.add(sphere(0.3, '#58b847', -0.32, 0.22, 0.05, 10, 8));
   g.scale.setScalar(scale);
   return g;
 }
@@ -1484,9 +1564,20 @@ export function createWorkshop({ wall = '#f5e6c8', roofColor = '#b5651d', awning
   g.add(roof(4.5, 1.4, 3.2, roofColor, 0, 2.4, 0));
   g.add(box(0.9, 1.4, 0.08, '#6b4226', 0, 0.9, 1.42));
   for (const x of [-1.3, 1.3]) {
+    g.add(box(0.92, 0.72, 0.06, '#ffffff', x, 1.5, 1.41)); // marco
     g.add(box(0.8, 0.6, 0.08, '#9fd8ef', x, 1.5, 1.42));
+    g.add(box(0.04, 0.6, 0.09, '#ffffff', x, 1.5, 1.43)); // parante
     g.add(box(0.95, 0.1, 0.14, '#ffffff', x, 1.15, 1.45));
+    // Jardinera con flores
+    g.add(box(0.9, 0.2, 0.24, '#8e5229', x, 1.0, 1.56));
+    for (let i = 0; i < 4; i++) {
+      g.add(sphere(0.085, '#57b947', x - 0.3 + i * 0.2, 1.13, 1.56, 8, 6));
+      g.add(sphere(0.05, ['#ff5d8f', '#ffcf3a', '#ffffff', '#ff9f1c'][i], x - 0.3 + i * 0.2, 1.2, 1.62, 8, 6));
+    }
   }
+  // Farolito al lado de la puerta
+  g.add(box(0.06, 0.3, 0.06, '#2b2b2b', 0.62, 1.5, 1.48));
+  g.add(box(0.16, 0.2, 0.16, '#ffe9a8', 0.62, 1.35, 1.52));
   g.add(box(0.45, 1.2, 0.45, '#8d6e63', 1.2, 3.3, -0.5));
   for (let i = 0; i < 5; i++) {
     const s = box(0.52, 0.08, 0.8, awning[i % 2], -1.04 + 0.52 * i, 2.3, 1.75);
@@ -1494,6 +1585,91 @@ export function createWorkshop({ wall = '#f5e6c8', roofColor = '#b5651d', awning
     g.add(s);
   }
   g.userData.chimney = new THREE.Vector3(1.2, 4.0, -0.5);
+  return g;
+}
+
+/**
+ * Frente de tienda (puesto): tarima de madera, pared de fondo con estantes llenos de mercadería,
+ * toldo a rayas con volados, cartel arriba y macetas. El origen es el centro del mostrador;
+ * el frente (los clientes) está hacia +Z y la caja queda bajo el toldo.
+ */
+export function createShopFront({ wall = '#fff3e0', trim = '#d9473b', awning = ['#ffffff', '#e8503f'] } = {}) {
+  const g = new THREE.Group();
+  const trimDark = shade(trim, -0.12);
+  // Tarima con juntas
+  g.add(box(4.9, 0.05, 2.75, '#c99a62', 0, 0.025, -0.82));
+  for (let i = 0; i < 5; i++) g.add(box(4.9, 0.054, 0.03, '#a77a46', 0, 0.027, -2.0 + i * 0.5));
+  // Pared de fondo con zócalo y cornisa
+  g.add(box(5.2, 2.5, 0.16, wall, 0, 1.25, -2.2));
+  g.add(box(5.3, 0.3, 0.2, trimDark, 0, 0.15, -2.2));
+  g.add(box(5.4, 0.14, 0.26, trim, 0, 2.53, -2.2));
+  for (const x of [-2.6, 2.6]) g.add(box(0.18, 2.6, 0.24, trim, x, 1.3, -2.2)); // columnas
+  // Estantes con frascos y cajoncitos de colores
+  const goods = ['#e8503f', '#ffcf3a', '#7bcc45', '#3fa7e0', '#ff9f1c', '#a29bfe', '#ffffff', '#ff8fab'];
+  for (const [y, k] of [[1.0, 0], [1.6, 3]]) {
+    g.add(box(4.3, 0.06, 0.34, '#a0703f', 0, y, -2.0));
+    for (let i = 0; i < 9; i++) {
+      const x = -1.95 + i * 0.49;
+      const c = goods[(i + k) % goods.length];
+      if ((i + k) % 3 === 0) g.add(box(0.36, 0.22, 0.24, '#c07a43', x, y + 0.14, -1.98)); // cajón
+      if ((i + k) % 3 === 0) g.add(sphere(0.07, c, x - 0.07, y + 0.27, -1.98, 8, 6));
+      else g.add(cyl(0.09, 0.1, 0.22, 10, c, x, y + 0.14, -1.98)); // frasco
+      if ((i + k) % 3 === 1) g.add(cyl(0.095, 0.095, 0.04, 10, '#ffffff', x, y + 0.27, -1.98)); // tapa
+    }
+  }
+  // Toldo a rayas, inclinado hacia el frente, con volados
+  const n = 8;
+  const w = 5.4 / n;
+  for (let i = 0; i < n; i++) {
+    const x = -2.7 + w / 2 + i * w;
+    const stripe = box(w + 0.01, 0.04, 1.36, awning[i % 2], x, 2.3, -1.5);
+    stripe.rotation.x = 0.32;
+    g.add(stripe);
+    g.add(box(w + 0.01, 0.2, 0.04, awning[(i + 1) % 2], x, 1.98, -0.86));
+  }
+  for (const x of [-2.55, 2.55]) {
+    const arm = box(0.05, 0.05, 1.4, '#5c4033', x, 2.0, -1.5);
+    arm.rotation.x = -0.45;
+    g.add(arm);
+  }
+  // Cartel arriba de la pared (el nombre va en un cartel de texto delante)
+  g.add(box(3.0, 0.66, 0.1, trim, 0, 3.02, -2.2));
+  g.add(box(2.8, 0.5, 0.04, '#fffaf0', 0, 3.02, -2.13));
+  for (const x of [-1.1, 1.1]) g.add(box(0.06, 0.4, 0.06, '#5c4033', x, 2.62, -2.2));
+  // Macetas en las puntas de la tarima
+  for (const x of [-2.25, 2.25]) {
+    g.add(cyl(0.2, 0.15, 0.3, 12, '#c2693c', x, 0.2, -1.85));
+    g.add(sphere(0.24, '#4aa63c', x, 0.48, -1.85, 10, 8));
+    g.add(sphere(0.06, '#ff5d8f', x + 0.1, 0.62, -1.75, 8, 6));
+    g.add(sphere(0.06, '#ffcf3a', x - 0.12, 0.58, -1.72, 8, 6));
+  }
+  return g;
+}
+
+/** Patio de baldosas para el frente de un taller (donde están las mesas y el pallet). */
+export function createPatio(w, d) {
+  const g = new THREE.Group();
+  g.add(box(w, 0.02, d, '#b9a88a', 0, 0.006, 0));
+  const nx = Math.max(2, Math.round(w / 0.9));
+  const nz = Math.max(2, Math.round(d / 0.9));
+  const tw = w / nx;
+  const td = d / nz;
+  for (let i = 0; i < nx; i++) {
+    for (let k = 0; k < nz; k++) {
+      g.add(box(tw - 0.07, 0.02, td - 0.07, (i + k) % 2 ? '#e3d6bd' : '#d8c9ab', -w / 2 + tw / 2 + i * tw, 0.012, -d / 2 + td / 2 + k * td));
+    }
+  }
+  return g;
+}
+
+/** Deck de madera (tablones a lo largo de X con un borde más oscuro). */
+export function createDeck(w, d) {
+  const g = new THREE.Group();
+  g.add(box(w, 0.06, d, '#8e5229', 0, 0.03, 0));
+  const n = Math.round(d / 0.42);
+  for (let i = 0; i < n; i++) {
+    g.add(box(w - 0.16, 0.03, d / n - 0.05, i % 2 ? '#c99a62' : '#bf8f57', 0, 0.065, -d / 2 + d / n / 2 + i * (d / n)));
+  }
   return g;
 }
 

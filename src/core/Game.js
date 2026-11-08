@@ -17,7 +17,12 @@ export class Game {
   constructor(container) {
     // ---------- Renderer (más liviano en celulares) ----------
     this.renderer = new THREE.WebGLRenderer({ antialias: !IS_TOUCH || window.devicePixelRatio < 2, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_TOUCH ? 1.75 : 2));
+    // Resolución adaptativa: arranca en la máxima y baja de a poco si la compu no llega (ver frame())
+    this.maxPixelRatio = Math.min(window.devicePixelRatio, IS_TOUCH ? 1.75 : 2);
+    this.pixelRatio = this.maxPixelRatio;
+    this.frameMs = 16;
+    this.prTimer = 0;
+    this.renderer.setPixelRatio(this.pixelRatio);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -200,8 +205,10 @@ export class Game {
   }
 
   frame() {
-    const dt = Math.min(this.clock.getDelta(), 0.05);
+    const raw = this.clock.getDelta();
+    const dt = Math.min(raw, 0.05);
     this.time += dt;
+    this.adaptResolution(raw);
 
     // Los objetos agregados durante el loop se actualizan en el mismo frame.
     for (let i = 0; i < this.updatables.length; i++) {
@@ -222,6 +229,25 @@ export class Game {
     if (this.saveTimer <= 0) { this.saveTimer = 3; this.world.save(); }
 
     this.renderer.render(this.scene, this.camera);
+  }
+
+  /**
+   * Si los cuadros tardan (menos de ~38 fps) baja la resolución interna de a 0,25 hasta 1;
+   * si anda fluido, la vuelve a subir. Así los equipos lentos juegan sin tirones.
+   */
+  adaptResolution(raw) {
+    if (raw > 0.25) return; // pestaña oculta o pausa: no cuenta
+    this.frameMs += (raw * 1000 - this.frameMs) * 0.05;
+    this.prTimer += raw;
+    if (this.prTimer < 2) return;
+    this.prTimer = 0;
+    let pr = this.pixelRatio;
+    if (this.frameMs > 26 && pr > 1) pr = Math.max(1, pr - 0.25);
+    else if (this.frameMs < 18 && pr < this.maxPixelRatio) pr = Math.min(this.maxPixelRatio, pr + 0.25);
+    if (pr !== this.pixelRatio) {
+      this.pixelRatio = pr;
+      this.renderer.setPixelRatio(pr);
+    }
   }
 
   /** Cámara que sigue al jugador suavemente; también mueve el sol para sombras nítidas. */

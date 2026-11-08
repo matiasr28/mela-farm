@@ -24,6 +24,7 @@ import { PlayerController } from '../entities/PlayerController.js';
 import { CatAI } from '../entities/CatAI.js';
 import { MatiasAI } from '../entities/MatiasAI.js';
 import { Restaurant } from '../entities/Restaurant.js';
+import { bakeGroup, batchStatic } from '../core/Bake.js';
 import { Pile } from '../systems/Pile.js';
 import { TransferZone } from '../systems/TransferZone.js';
 import {
@@ -94,6 +95,7 @@ export class World {
     });
     this.shop = new Shop(game, {
       position: V(8, 3), name: 'TIENDA', spawnPoint: V(25.5, 10), exitPoint: V(25.5, 4),
+      look: { wall: '#fff3e0', trim: '#d9473b', awning: ['#ffffff', '#e8503f'] },
       products: [
         { type: 'egg', x: -0.85, max: CONFIG.shop.eggShelfMax },
         { type: 'milk', flag: 'milk', x: 0.4, max: CONFIG.shop.milkShelfMax, pile: { spacing: [0.28, 0.32] } },
@@ -706,7 +708,7 @@ export class World {
 
   buildTractor(instant) {
     const binPos = V(-11, -0.4);
-    const bin = createBin();
+    const bin = bakeGroup(createBin());
     bin.position.copy(binPos);
     this.scene.add(bin);
     this.game.obstacles.push({ minX: binPos.x - 1.0, maxX: binPos.x + 1.0, minZ: binPos.z - 0.7, maxZ: binPos.z + 0.7 });
@@ -739,11 +741,13 @@ export class World {
     this.scene.add(yard);
     this.wheatField = this.addField({ type: 'wheat', center: V(-12, -22.5), cols: 6, rows: 4, spacing: 1.5, growTime: 8 });
     this.game.flags.wheat = true;
+    const bales = [];
     for (const [x, z] of [[22, -36], [23, -36.2], [-17.5, -36.5]]) {
       const h = createHayBale();
       h.position.set(x, 0, z);
-      this.scene.add(h);
+      bales.push(h);
     }
+    batchStatic(bales, this.scene);
     if (!instant) {
       this.game.fx.burst(V(-12, -22.5).setY(1), 40);
       this.game.chatter?.say(this.player, '¡Wow! ¡Cuánto lugar nuevo! 🌾', 3);
@@ -793,6 +797,7 @@ export class World {
   buildShop2(instant) {
     this.shop2 = new Shop(this.game, {
       position: V(12, -22), name: 'ALMACÉN', spawnPoint: V(25.5, -18), exitPoint: V(25.5, -26), queueSize: 5, instant,
+      look: { wall: '#fdebd0', trim: '#a0522d', awning: ['#ffffff', '#e8762b'] },
       products: [
         { type: 'bread', x: -1.15, max: 16, pile: { cols: 1, rows: 2, spacing: [0.5, 0.45] } },
         { type: 'jam', flag: 'jam', x: -0.4, max: 12, pile: { cols: 1, rows: 2, spacing: [0.4, 0.4] } },
@@ -811,7 +816,7 @@ export class World {
   /** Matías, el administrador: escritorio propio + IA. */
   hireMatias(instant) {
     const deskPos = V(19.5, 0.8);
-    const desk = createDesk();
+    const desk = bakeGroup(createDesk());
     desk.position.copy(deskPos);
     this.scene.add(desk);
     if (!instant) this.game.fx.popIn(desk);
@@ -874,6 +879,7 @@ export class World {
   buildShop3(instant) {
     this.shop3 = new Shop(this.game, {
       position: V(44, 6), name: 'FERIA', spawnPoint: V(51.5, 12), exitPoint: V(51.5, 1), queueSize: 4, instant,
+      look: { wall: '#f3e8ff', trim: '#7b2cbf', awning: ['#ffcf3a', '#7b2cbf'] },
       products: [
         { type: 'scarf', x: -1.15, max: 12, pile: { cols: 1, rows: 2, spacing: [0.5, 0.45] } },
         { type: 'icecream', flag: 'icecream', x: -0.4, max: 10, pile: { cols: 1, rows: 2, spacing: [0.4, 0.4] } },
@@ -989,6 +995,7 @@ export class World {
   buildShop4(instant) {
     this.shop4 = new Shop(this.game, {
       position: V(-37, 3), name: 'MERCADO', spawnPoint: V(-45, 12.5), exitPoint: V(-45, -3), queueSize: 4, instant,
+      look: { wall: '#eef7e4', trim: '#2e8b57', awning: ['#ffffff', '#2e8b57'] },
       products: [
         // La harina no se vende acá: es insumo de la Facturería (y va en los pedidos del camión)
         { type: 'oil', x: -0.85, max: 12, pile: { cols: 2, rows: 2, spacing: [0.4, 0.4] } },
@@ -1018,12 +1025,14 @@ export class World {
     yard.position.set((x0 + x1) / 2, -0.016, (z0 + z1) / 2);
     yard.receiveShadow = true;
     this.scene.add(yard);
+    const bales = [];
     for (const [x, z, r] of [[-40, -53.5, 0], [-38.8, -53.6, 0.1], [45, -53.4, 0.2], [46.2, -53.3, 0]]) {
       const h = createHayBale();
       h.position.set(x, 0, z);
       h.rotation.y = r;
-      this.scene.add(h);
+      bales.push(h);
     }
+    batchStatic(bales, this.scene);
     this.game.flags.hills = true;
     if (!instant) {
       this.game.fx.burst(V(4, -47).setY(1), 40);
@@ -1078,6 +1087,7 @@ export class World {
     // Los clientes bajan de los cerros (aparecen del otro lado del cerco norte)
     this.shop5 = new Shop(this.game, {
       position: V(-17, -47), name: 'PARADOR', spawnPoint: V(-9, -61), exitPoint: V(-5, -61), queueSize: 4, instant,
+      look: { wall: '#fff8dc', trim: '#b5651d', awning: ['#ffffff', '#e0a800'] },
       products: [
         { type: 'cheese', x: -0.85, max: 12, pile: { cols: 2, rows: 2, spacing: [0.42, 0.4] } },
         { type: 'pizza', flag: 'pizza', x: 0.4, max: 10, pile: { cols: 1, rows: 2, spacing: [0.46, 0.46] } },
@@ -1089,7 +1099,7 @@ export class World {
   /** Silo (Granja 7): +50% de lugar en comederos, pallets de los corrales y el cajón del tractor, y +20% de ingresos. */
   buildSilo(instant) {
     const s = SPECIALS[1];
-    this.silo = s.model();
+    this.silo = bakeGroup(s.model());
     this.silo.position.copy(s.pos);
     this.scene.add(this.silo);
     this.game.obstacles.push({ minX: s.pos.x - 1.3, maxX: s.pos.x + 3.3, minZ: s.pos.z - 1.6, maxZ: s.pos.z + 1.6 });
@@ -1134,11 +1144,13 @@ export class World {
     yard.position.set((x0 + x1) / 2, -0.016, (z0 + z1) / 2);
     yard.receiveShadow = true;
     this.scene.add(yard);
+    const pumpkins = [];
     for (const [x, z] of [[70, -45], [69, -45.2], [70.2, 10.5]]) {
       const pm = createPumpkin(1.4);
       pm.position.set(x, 0, z);
-      this.scene.add(pm);
+      pumpkins.push(pm);
     }
+    batchStatic(pumpkins, this.scene);
     this.game.flags.flores = true;
     if (!instant) {
       this.game.fx.burst(V(62, -20).setY(1), 40);
@@ -1180,6 +1192,7 @@ export class World {
     ridge.position.set(0, H + 0.6, 0);
     g.add(ridge);
     g.position.copy(c);
+    bakeGroup(g); // postes y vigas en un mesh (el vidrio queda aparte, es transparente)
     this.scene.add(g);
     this.game.obstacles.push(
       { minX: c.x - hw - 0.1, maxX: c.x + hw + 0.1, minZ: c.z - hd - 0.1, maxZ: c.z - hd + 0.1 },
@@ -1223,6 +1236,7 @@ export class World {
   buildShop6(instant) {
     this.shop6 = new Shop(this.game, {
       position: V(62, 3), name: 'KIOSCO', spawnPoint: V(70.5, 12.5), exitPoint: V(70.5, -4), queueSize: 4, instant,
+      look: { wall: '#ffe8f0', trim: '#e0457b', awning: ['#ffffff', '#ff5d8f'] },
       products: [
         { type: 'honey', x: -0.85, max: 12, pile: { cols: 2, rows: 2, spacing: [0.38, 0.38] } },
         { type: 'alfajor', flag: 'alfajor', x: 0.4, max: 12, pile: { cols: 2, rows: 2, spacing: [0.36, 0.36] } },
@@ -1291,12 +1305,13 @@ export class World {
       g.add(pad);
     }
     g.position.copy(c);
+    bakeGroup(g, { keep: [water] }); // juncos, camalotes y orilla en un mesh; el agua conserva su brillo
     this.scene.add(g);
     this.game.obstacles.push({ minX: c.x - 8.4, maxX: c.x + 8.4, minZ: c.z - 4.6, maxZ: c.z + 2.6 });
     // Patos nadando en círculos
     const ducks = [];
     for (let i = 0; i < 5; i++) {
-      const d = createDuck();
+      const d = bakeGroup(createDuck());
       d.position.copy(c).setY(0.02);
       this.scene.add(d);
       ducks.push({ d, a: (i / 5) * Math.PI * 2, r: 2 + (i % 3) * 1.5, w: 0.25 + (i % 2) * 0.12 });
@@ -1344,6 +1359,7 @@ export class World {
   buildShop7(instant) {
     this.shop7 = new Shop(this.game, {
       position: V(60, -60), name: 'CANTINA', spawnPoint: V(68, -76), exitPoint: V(52, -76), queueSize: 4, instant,
+      look: { wall: '#e8f6ff', trim: '#0077b6', awning: ['#ffffff', '#0077b6'] },
       products: [
         { type: 'friedfish', x: -0.85, max: 12, pile: { cols: 2, rows: 2, spacing: [0.38, 0.38] } },
         { type: 'empanada', flag: 'empanada', x: 0.4, max: 14, pile: { cols: 2, rows: 2, spacing: [0.38, 0.36] } },
@@ -1368,7 +1384,7 @@ export class World {
   /** Fuente (Granja 10): plaza frente al Restaurante; atrae más comensales (+20% de ingresos como especial). */
   buildFountain(instant) {
     const s = SPECIALS[4];
-    const m = s.model();
+    const m = bakeGroup(s.model());
     m.position.copy(s.pos);
     this.scene.add(m);
     this.game.obstacles.push({ minX: s.pos.x - 1.7, maxX: s.pos.x + 1.7, minZ: s.pos.z - 1.7, maxZ: s.pos.z + 1.7 });
@@ -1399,7 +1415,8 @@ export class World {
   /** Construcción especial (Granja 11+): decoración animada + 20% más de ingresos. */
   buildSpecial(s, place, instant) {
     if (place) {
-      const m = s.model();
+      const raw = s.model();
+      const m = bakeGroup(raw, { keep: [raw.userData.spin] });
       m.position.copy(s.pos);
       this.scene.add(m);
       this.game.obstacles.push({ minX: s.pos.x - 1.6, maxX: s.pos.x + 1.6, minZ: s.pos.z - 1.6, maxZ: s.pos.z + 1.6 });
@@ -1427,6 +1444,7 @@ export class World {
     this.fence.add(createFenceLine(fx0, fz1, fx1, fz1, 1.6));
     this.fence.add(createFenceLine(fx0, fz0, fx0, fz1, 1.6));
     this.fence.add(createFenceLine(fx1, fz0, fx1, fz1, 1.6));
+    bakeGroup(this.fence);
     this.scene.add(this.fence);
   }
 
@@ -1434,6 +1452,9 @@ export class World {
     const scene = this.scene;
     const b = this.bounds;
     const rnd = seeded(42);
+    // Lo estático no va directo a la escena: se junta acá y al final se fusiona por zonas (batchStatic)
+    const staged = [];
+    const stage = (o) => { staged.push(o); return o; };
 
     // Pasto (afuera del cerco)
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(220, 220), mat('#6cc24a'));
@@ -1461,7 +1482,7 @@ export class World {
       const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.02, d), mat('#efcf95'));
       m.position.set(x, -0.005, z);
       m.receiveShadow = true;
-      scene.add(m);
+      stage(m);
     };
     path(3, -1.6, 44, 2.4);
     path(-1, 6, 2.4, 13);
@@ -1475,12 +1496,12 @@ export class World {
     for (const z of [14.35, 17.65]) {
       const edge = new THREE.Mesh(new THREE.BoxGeometry(220, 0.035, 0.14), mat('#e8e8e8'));
       edge.position.set(0, 0, z);
-      scene.add(edge);
+      stage(edge);
     }
     for (let x = -70; x < 70; x += 4) {
       const line = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.035, 0.14), mat('#f6d55c'));
       line.position.set(x, 0, 16);
-      scene.add(line);
+      stage(line);
     }
 
     this.buildFence();
@@ -1489,14 +1510,14 @@ export class World {
     const sign = createSign("Mela's Farm", `Granja ${this.farmLevel}`);
     sign.position.set(-5.2, 0, 5.2);
     sign.rotation.y = 0.25;
-    scene.add(sign);
+    stage(sign);
     this.game.obstacles.push({ minX: -6.6, maxX: -3.8, minZ: 4.9, maxZ: 5.5 });
 
     // Casa de la granja (al oeste, afuera del cerco)
     const house = createFarmhouse();
     house.position.set(-27, 0, -8);
     house.rotation.y = Math.PI / 2;
-    scene.add(house);
+    stage(house);
     this.game.obstacles.push({ minX: -29.3, maxX: -24.7, minZ: -10.9, maxZ: -5.1 });
 
     // Fardos de heno y zapallos decorativos
@@ -1504,7 +1525,7 @@ export class World {
       const h = createHayBale();
       h.position.set(x, y, z);
       h.rotation.y = ry;
-      scene.add(h);
+      stage(h);
     };
     bale(7.6, -12.6); bale(8.7, -12.5, 0.1); bale(8.1, -12.55, 0.05, 0.5);
     bale(-17.6, 10.2, Math.PI / 2); bale(-17.6, 11.3, Math.PI / 2);
@@ -1513,7 +1534,7 @@ export class World {
       const p = createPumpkin(s * 1.6);
       p.position.set(x, 0, z);
       p.rotation.y = rnd() * 6;
-      scene.add(p);
+      stage(p);
     }
 
     // Zona reservada para la expansión norte (sin árboles)
@@ -1543,7 +1564,7 @@ export class World {
       const t = createTree(0.85 + rnd() * 0.7, rnd() < 0.35);
       t.position.set(x, 0, z);
       t.rotation.y = rnd() * 6;
-      scene.add(t);
+      stage(t);
       track(t, x, z);
     }
     // Bosque más allá de Los Cerros (queda del otro lado del cerco cuando se abren)
@@ -1554,7 +1575,7 @@ export class World {
       const t = createTree(0.85 + rndN() * 0.7, rndN() < 0.35);
       t.position.set(x, 0, z);
       t.rotation.y = rndN() * 6;
-      scene.add(t);
+      stage(t);
       if (z > LAKE_MIN_Z - 2.5) this.lakeDecor.push(t);
     }
     // Bosque más allá de Las Flores (este) y la esquina noreste
@@ -1568,12 +1589,12 @@ export class World {
       const t = createTree(s, autumn);
       t.position.set(x, 0, z);
       t.rotation.y = rndE() * 6;
-      scene.add(t);
+      stage(t);
     }
     for (let i = 0; i < 14; i++) {
       const t = createTree(0.85 + rndE() * 0.7, rndE() < 0.35);
       t.position.set(60 + rndE() * 15, 0, HILLS_MIN_Z - 3 - rndE() * 12);
-      scene.add(t);
+      stage(t);
       if (t.position.z > LAKE_MIN_Z - 2.5 && t.position.x < FLORES_MAX_X + 2.5) this.lakeDecor.push(t);
     }
     // Bosque más allá de La Laguna (norte)
@@ -1582,14 +1603,14 @@ export class World {
       const t = createTree(0.85 + rndL() * 0.7, rndL() < 0.35);
       t.position.set(-55 + rndL() * 135, 0, LAKE_MIN_Z - 3 - rndL() * 12);
       t.rotation.y = rndL() * 6;
-      scene.add(t);
+      stage(t);
     }
     for (let i = 0; i < 40; i++) {
       const x = fx0 - 1.5 + rnd() * (yardW + 3);
       const z = rnd() < 0.5 ? nz0 - rnd() * 1.5 : 19 + rnd() * 3;
       const bsh = createBush(0.8 + rnd() * 0.6);
       bsh.position.set(x, 0, z);
-      scene.add(bsh);
+      stage(bsh);
       track(bsh, x, z);
     }
     for (let i = 0; i < 25; i++) {
@@ -1598,7 +1619,7 @@ export class World {
       r.position.z = -50 + rnd() * 78;
       if (Math.abs(r.position.z - 16) < 3 || blocked(r.position.x, r.position.z)) continue;
       r.rotation.y = rnd() * 6;
-      scene.add(r);
+      stage(r);
       track(r, r.position.x, r.position.z);
     }
 
@@ -1639,6 +1660,23 @@ export class World {
       if (!bk.nt && !bk.nf) continue;
       scene.add(bk.tufts, bk.flowers);
       bk.decor?.push(bk.tufts, bk.flowers);
+    }
+
+    // Fusión por zonas: lo de cada expansión (oeste, cerros, flores, laguna) por separado,
+    // así al abrirla se saca entero como antes.
+    const decorOf = new Map();
+    for (const arr of [this.westDecor, this.hillsDecor, this.floresDecor, this.lakeDecor]) for (const o of arr) decorOf.set(o, arr);
+    const groups = new Map();
+    for (const o of staged) {
+      const arr = decorOf.get(o) ?? null;
+      if (!groups.has(arr)) groups.set(arr, []);
+      groups.get(arr).push(o);
+    }
+    for (const [arr, objs] of groups) {
+      const meshes = batchStatic(objs, scene);
+      if (!arr) continue;
+      for (const o of objs) arr.splice(arr.indexOf(o), 1);
+      arr.push(...meshes);
     }
   }
 

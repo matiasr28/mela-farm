@@ -6,6 +6,8 @@
 import * as THREE from 'three';
 import { createWorkshop, createTable, createPallet, createItem, sphere, ITEMS } from '../models/Models.js';
 import { Pile } from '../systems/Pile.js';
+import { bakeGroup } from '../core/Bake.js';
+import { createPatio } from '../models/Models.js';
 import { TransferZone } from '../systems/TransferZone.js';
 import { makeTextSprite } from '../core/Labels.js';
 
@@ -63,6 +65,12 @@ export class Processor {
       position: new THREE.Vector3(position.x + tableX, 0, position.z + 3.75), mode: 'drop', types, target: sink, roles: inputRoles,
     });
 
+    // Patio de baldosas al frente (mesa, pallet y zonas de carga)
+    const patioL = Math.min(tableX - 0.5 * types.length - 0.4, -2.4);
+    const patio = createPatio(2.6 - patioL, 3.6);
+    patio.position.set((patioL + 2.6) / 2, 0, 3.3);
+    this.group.add(patio);
+
     // Pallet de salida
     const pallet = createPallet();
     pallet.position.set(1.6, 0, 2.15);
@@ -80,6 +88,8 @@ export class Processor {
 
     this.door = new THREE.Vector3(position.x, 0.8, position.z + 1.5);
     this.smokeTimer = 0;
+    bakeGroup(this.building, { keep: [this.building.userData.spin] });
+    bakeGroup(this.group, { keep: [this.building] });
     game.add(this);
   }
 

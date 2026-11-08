@@ -66,7 +66,7 @@ export class TransferZone {
       ctx.fill();
       ctx.restore();
     });
-    this.decal.mesh.position.set(position.x, 0.025, position.z);
+    this.decal.mesh.position.set(position.x, 0.065, position.z); // por encima de tarimas y patios
     game.scene.add(this.decal.mesh);
     game.add(this);
   }

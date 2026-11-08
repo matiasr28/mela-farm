@@ -6,6 +6,7 @@ import {
   createCornPlant, createWheatPlant, createPumpkinPlant, createStrawberryPlant, createAppleTree, createSunflowerPlant, createGrassPlant, createFlowerPlant, createFishSpot, createItem, mat, C,
 } from '../models/Models.js';
 import { CONFIG } from '../config.js';
+import { bakeGroup, bakeTemplate, BAKED_MAT } from '../core/Bake.js';
 
 const _v = new THREE.Vector3();
 
@@ -17,9 +18,47 @@ const CROPS = {
   apple: { plant: createAppleTree, soil: '#7fae4a', furrow: '#6c9a3c' },
   sunflower: { plant: createSunflowerPlant, soil: '#7a4f2e', furrow: '#5f3c21' },
   grass: { plant: createGrassPlant, soil: '#8a6a3a', furrow: '#6f5530' },
-  flower: { plant: createFlowerPlant, soil: '#6b4a2e', furrow: '#553a22' },
+  flower: { plant: createFlowerPlant, soil: '#6b4a2e', furrow: '#553a22', variants: 5 },
   fish: { plant: createFishSpot, soil: '#5fb3e0', furrow: '#4a9fd0' }, // orilla de la laguna (agua bajita)
 };
+
+/**
+ * Planta armada con dos meshes horneados (mata + fruto), con la geometría compartida entre todas
+ * las del mismo cultivo: un campo de 30 plantas pasa de ~300 piezas a 60. Las flores tienen
+ * variantes de color.
+ */
+const plantParts = new Map();
+function plantFromTemplate(type, crop) {
+  const variant = crop.variants ? Math.floor(Math.random() * crop.variants) : 0;
+  const key = `${type}:${variant}`;
+  let t = plantParts.get(key);
+  if (!t) {
+    const sample = crop.plant(variant);
+    const cob = sample.cob;
+    cob.parent.remove(cob);
+    // Si el fruto es un grupo, se hornean sus piezas en el espacio del grupo y el mesh nuevo
+    // hereda la posición/giro del grupo (así se puede animar igual que antes).
+    const isGroup = cob.children.length > 0;
+    const pos = cob.position.clone();
+    const rot = cob.rotation.clone();
+    const scale = cob.scale.clone();
+    t = {
+      body: bakeTemplate(`plant:${key}`, () => sample.group),
+      cob: bakeTemplate(`cob:${key}`, () => { const g = new THREE.Group(); g.add(...(isGroup ? [...cob.children] : [cob])); return g; }),
+      pos, rot, scale, isGroup,
+    };
+    plantParts.set(key, t);
+  }
+  const group = new THREE.Group();
+  const bodyMesh = new THREE.Mesh(t.body, BAKED_MAT);
+  bodyMesh.castShadow = bodyMesh.receiveShadow = true;
+  group.add(bodyMesh);
+  const cob = new THREE.Mesh(t.cob, BAKED_MAT);
+  cob.castShadow = true;
+  if (t.isGroup) { cob.position.copy(t.pos); cob.rotation.copy(t.rot); cob.scale.copy(t.scale); }
+  group.add(cob);
+  return { group, cob };
+}
 
 export class ResourceNode {
   constructor(game, { type = 'corn', center, cols = 6, rows = 5, spacing = 1.5, growTime = CONFIG.field.growTime }) {
@@ -50,7 +89,7 @@ export class ResourceNode {
       furrow.receiveShadow = true;
       this.group.add(furrow);
       for (let c = 0; c < cols; c++) {
-        const { group, cob } = crop.plant();
+        const { group, cob } = plantFromTemplate(type, crop);
         const pos = new THREE.Vector3(center.x + (c - (cols - 1) / 2) * spacing, 0.06, z);
         group.position.copy(pos);
         group.rotation.y = Math.random() * Math.PI * 2;
@@ -59,6 +98,7 @@ export class ResourceNode {
       }
     }
 
+    bakeGroup(this.group, { keep: this.plants.map((p) => p.group) });
     this.timers = new Map();
     game.add(this);
   }
