@@ -64,6 +64,32 @@ const CANTINA_CHATS = [
   ['Dicen que acá se pesca con la mano.', '¡Mela se mete al agua y todo!'],
   ['¡Qué linda la laguna al atardecer!', 'La granja no para de crecer.'],
 ];
+const PULPERIA_CHATS = [
+  ['¿Llevás yerba para el mate? 🧉', '¡Siempre! Sin mate no arranco el día.'],
+  ['Esta yerba es de acá, ¡del yerbal de Mela!', 'Con razón tiene tanto sabor.'],
+  ['¿Hay dulce de leche? 🍮', '¡El mejor del país, dicen!'],
+  ['¿Escuchaste el tren? 🚂', '¡Llega cargado y se va más cargado todavía!'],
+  ['¿Viste a Mela a caballo? 🐎', '¡Parece una gaucha de verdad!'],
+];
+const BODEGON_CHATS = [
+  ['¡Un choripán, por favor! 🥙', '¡Con chimichurri, que es lo mejor!'],
+  ['Huele a asado desde la ruta 🔥', '¡Es la parrilla de Chacho!'],
+  ['¿Probaste las pastas de Nonna Pina? 🍝', '¡Como las de mi abuela!'],
+  ['¿Vamos a la peña después? 🎻', '¡Dale! Hoy toca zamba.'],
+  ['Los novillos están hermosos 🐂', 'Ciro los cuida como a hijos.'],
+];
+const VINOTECA_CHATS = [
+  ['¿Un malbec de la casa? 🍷', '¡Recién salido de la bodega!'],
+  ['¿Viste el globo? 🎈', '¡Se ve toda la granja desde arriba!'],
+  ['Vino y chocolate, ¡qué combinación! 🍫', 'Mela sabe lo que hace.'],
+  ['¿Vamos a la hostería este finde? 🏡', '¡Ya reservé cabaña!'],
+];
+const CHOCO_CHATS = [
+  ['¿Probaste el chocolate con maní? 🥜', '¡Es una locura!'],
+  ['Una caja de bombones para mi mamá 🍫', '¡Qué lindo regalo!'],
+  ['¿Te enteraste? ¡Mela y Matías se casan! 💍', '¡Qué emoción! 🥹'],
+  ['La plaza del pueblo quedó hermosa 🌳', 'Ahora viene gente de todos lados.'],
+];
 const CASHIER_CHATS = [
   ['¡Hola! ¿Qué te llevás?', 'Lo de siempre, por favor.'],
   ['¡Bienvenido a lo de Mela!', '¡Gracias! Siempre tan amables.'],
@@ -95,6 +121,14 @@ const WORKER_TO_MELA = {
     ['¡Sale una pizza bien de muzza! 🍕', '¡Qué pinta, {a}!'],
     ['¡Alfajores recién bañados! 🍪', '¡Guardame uno, {a}!'],
     ['¡Salen empanadas para la Cantina! 🥟', '¡Qué olorcito, {a}!'],
+  ],
+  maid: [
+    ['¡Mela! Las cabañas quedaron impecables ✨', '¡Gracias, {a}! Sos una genia.'],
+    ['¡Necesito más sábanas, jefa! 🛏️', '¡Ya mando al Lavadero, {a}!'],
+  ],
+  shipper: [
+    ['¡Mela! El barco sale completito 🚢', '¡Genial, {a}!'],
+    ['Carga despachada, ¡rumbo al mundo! ⚓', '¡Sos un crack, {a}!'],
   ],
   waiter: [
     ['¡Mesa 3 servida, jefa! 🍽️', '¡Volando, {a}!'],
@@ -309,7 +343,8 @@ export class Chatter {
         const b = q[i + 1];
         if (a.atSlot && b.atSlot && this.free(a) && this.free(b) && this.near(a)) {
           const w = this.game.world;
-          const pool = shop === w.shop2 ? ALMACEN_CHATS : shop === w.shop3 ? FERIA_CHATS : shop === w.shop4 ? MERCADO_CHATS : shop === w.shop5 ? PARADOR_CHATS : shop === w.shop6 ? KIOSCO_CHATS : shop === w.shop7 ? CANTINA_CHATS : QUEUE_CHATS;
+          const pool = shop === w.shop2 ? ALMACEN_CHATS : shop === w.shop3 ? FERIA_CHATS : shop === w.shop4 ? MERCADO_CHATS : shop === w.shop5 ? PARADOR_CHATS : shop === w.shop6 ? KIOSCO_CHATS : shop === w.shop7 ? CANTINA_CHATS
+            : shop === w.shop8 ? PULPERIA_CHATS : shop === w.shop9 ? BODEGON_CHATS : shop === w.shop10 ? VINOTECA_CHATS : shop === w.shop11 ? CHOCO_CHATS : QUEUE_CHATS;
           const [l1, l2] = pick(pool);
           return [[a, l1], [b, l2]];
         }
@@ -342,7 +377,7 @@ export class Chatter {
     if (!this.free(p)) return null;
     const w = this.game.world.workers.find((x) => this.free(x) && distXZ2(x.position, p.position) < 4.5 * 4.5);
     if (!w) return null;
-    const [l1, l2] = pick(WORKER_TO_MELA[w.role]);
+    const [l1, l2] = pick(WORKER_TO_MELA[w.talkRole ?? w.role] ?? WORKER_TO_MELA[w.role]);
     return [[w, fill(l1, w, p)], [p, fill(l2, w, p)]];
   }
 

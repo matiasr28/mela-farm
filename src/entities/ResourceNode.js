@@ -5,6 +5,9 @@ import * as THREE from 'three';
 import {
   createCornPlant, createWheatPlant, createPumpkinPlant, createStrawberryPlant, createAppleTree, createSunflowerPlant, createGrassPlant, createFlowerPlant, createFishSpot, createItem, mat, C,
 } from '../models/Models.js';
+import {
+  createYerbaPlant, createCanePlant, createTomatoPlant, createPinePlant, createGrapePlant, createPeanutPlant, createCottonPlant,
+} from '../models/ModelsExtra.js';
 import { CONFIG } from '../config.js';
 import { bakeGroup, bakeTemplate, BAKED_MAT } from '../core/Bake.js';
 
@@ -20,6 +23,14 @@ const CROPS = {
   grass: { plant: createGrassPlant, soil: '#8a6a3a', furrow: '#6f5530' },
   flower: { plant: createFlowerPlant, soil: '#6b4a2e', furrow: '#553a22', variants: 5 },
   fish: { plant: createFishSpot, soil: '#5fb3e0', furrow: '#4a9fd0' }, // orilla de la laguna (agua bajita)
+  // Granjas 11 a 20
+  yerba: { plant: createYerbaPlant, soil: '#9c4a2a', furrow: '#7d3a20' }, // tierra colorada misionera
+  cane: { plant: createCanePlant, soil: '#7a5a33', furrow: '#5f4526' },
+  tomato: { plant: createTomatoPlant, soil: '#6b4a2e', furrow: '#553a22' },
+  log: { plant: createPinePlant, soil: '#6f7d4a', furrow: '#5b683b' },
+  grape: { plant: createGrapePlant, soil: '#a07850', furrow: '#86633f' },
+  peanut: { plant: createPeanutPlant, soil: '#b07a45', furrow: '#946537' },
+  cotton: { plant: createCottonPlant, soil: '#8a5a3a', furrow: '#6e4426' },
 };
 
 /**
@@ -136,7 +147,7 @@ export class ResourceNode {
 
     // Cosecha automática por proximidad
     for (const c of this.game.carriers) {
-      const allowed = c.canHarvest && (!c.harvestTypes || c.harvestTypes.includes(this.type));
+      const allowed = c.canHarvest && !c.frozen && (!c.harvestTypes || c.harvestTypes.includes(this.type));
       if (!allowed || !this.contains(c.position, 0.8)) { this.timers.delete(c); continue; }
       let t = (this.timers.get(c) ?? 0) - dt;
       if (t <= 0) {

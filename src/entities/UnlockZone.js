@@ -32,7 +32,7 @@ export class UnlockZone {
     if (this.done) return;
     const p = this.game.player.position;
     const half = this.size / 2;
-    const inside = Math.abs(p.x - this.position.x) < half && Math.abs(p.z - this.position.z) < half;
+    const inside = !this.game.player.frozen && Math.abs(p.x - this.position.x) < half && Math.abs(p.z - this.position.z) < half;
 
     // Leve "respiración" para llamar la atención (después de la animación de aparición)
     this.age = (this.age ?? 0) + dt;

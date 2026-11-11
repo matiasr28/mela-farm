@@ -5,6 +5,7 @@ import {
   createChicken, createCow, createSheep, createGoat, createBee, createHiveHouse, createCoopHouse, createBarnHouse, createTrough, createPallet,
   createFenceLine, createItem, mat,
 } from '../models/Models.js';
+import { createSteer } from '../models/ModelsExtra.js';
 import { Pile } from '../systems/Pile.js';
 import { bakeGroup } from '../core/Bake.js';
 import { TransferZone } from '../systems/TransferZone.js';
@@ -107,7 +108,7 @@ export class ProductionUnit {
 
   addAnimals(n, instant = false) {
     for (let i = 0; i < n; i++) {
-      const a = this.animalKind === 'cow' ? createCow() : this.animalKind === 'sheep' ? createSheep()
+      const a = this.animalKind === 'cow' ? createCow() : this.animalKind === 'steer' ? createSteer() : this.animalKind === 'sheep' ? createSheep()
         : this.animalKind === 'goat' ? createGoat() : this.animalKind === 'bee' ? createBee() : createChicken();
       bakeGroup(a.body, { keep: a.wings ?? [] });
       this.randomSpot(a.root.position);
@@ -178,7 +179,7 @@ export class ProductionUnit {
     a.hop = 0.35;
     a.root.getWorldPosition(_v);
     const animalPos = _v.clone();
-    const sound = { cow: 'moo', sheep: 'baa', goat: 'baa', bee: 'buzz' }[this.animalKind] ?? 'cluck';
+    const sound = { cow: 'moo', steer: 'moo', sheep: 'baa', goat: 'baa', bee: 'buzz' }[this.animalKind] ?? 'cluck';
     this.game.audio.play(sound, { pos: animalPos });
 
     // El animal "come" un ítem del comedero

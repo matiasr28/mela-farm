@@ -144,7 +144,7 @@ export class Shop {
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0 && !this.queue.isFull && this.availableTypes().length) {
       this.spawnCustomer();
-      this.spawnTimer = rand(cfg.spawnMin, cfg.spawnMax);
+      this.spawnTimer = rand(cfg.spawnMin, cfg.spawnMax) / this.game.shopSpawnMult();
     }
 
     for (const c of this.customers) c.update(dt);

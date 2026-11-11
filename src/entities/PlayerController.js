@@ -4,6 +4,9 @@ import * as THREE from 'three';
 import { Character } from './Character.js';
 import { StackManager } from '../systems/StackManager.js';
 import { makeTextSprite } from '../core/Labels.js';
+import { createHorse } from '../models/ModelsExtra.js';
+import { bakeGroup } from '../core/Bake.js';
+import { mat } from '../models/Models.js';
 import { CONFIG } from '../config.js';
 import { lerpAngle, clamp } from '../utils.js';
 
@@ -44,6 +47,10 @@ export class PlayerController {
     this.moved = false;
     this.wasFull = false;
 
+    this.horse = null;   // Caballeriza (Granja 12): Mela anda a caballo
+    this.frozen = false; // 'ride' = la lleva la aerosilla · 'stand' = ceremonia (no se mueve con el joystick)
+    this.trot = 0;
+
     this.maxLabel = makeTextSprite('MAX', { color: '#ffdd33', stroke: '#7a2b00', worldHeight: 0.55 });
     this.maxLabel.sprite.visible = false;
     game.scene.add(this.maxLabel.sprite);
@@ -51,7 +58,67 @@ export class PlayerController {
     game.add(this);
   }
 
+  /** Caballeriza: Mela sube al caballo (más rápida y con más lugar para cargar) hasta que se cansa. */
+  mountHorse() {
+    this.riding = true;
+    if (this.horse) { this.horse.root.visible = true; this.game.fx.popIn(this.horse.root); return; }
+    const h = createHorse();
+    for (const leg of h.legs) bakeGroup(leg);
+    bakeGroup(h.head);
+    bakeGroup(h.tail);
+    bakeGroup(h.body, { keep: [...h.legs, h.head, h.tail] });
+    h.root.position.z = -0.3;
+    this.root.add(h.root);
+    this.horse = h;
+  }
+
+  /** El caballo se cansó: Mela sigue a pie. */
+  dismountHorse() {
+    this.riding = false;
+    if (!this.horse) return;
+    this.horse.root.visible = false;
+    this.character.legL.rotation.z = this.character.legR.rotation.z = 0;
+  }
+
+  /** Fin de la luna de miel: se saca el velo. */
+  removeVeil() {
+    this.veil?.removeFromParent();
+    this.veil = null;
+  }
+
+  /** Boda (Granja 20): velo y corona de flores (durante la ceremonia y la luna de miel). */
+  wearVeil() {
+    if (this.veil) return;
+    const head = this.character.head;
+    const g = new THREE.Group();
+    const veilMat = new THREE.MeshStandardMaterial({ color: '#ffffff', transparent: true, opacity: 0.7, roughness: 0.5, side: THREE.DoubleSide });
+    const veil = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.75, 16, 1, true), veilMat);
+    veil.position.set(0, -0.05, -0.12);
+    veil.rotation.x = -0.25;
+    g.add(veil);
+    const colors = ['#ffffff', '#ff8fab', '#ffd23f'];
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * Math.PI * 2;
+      const f = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), mat(colors[i % 3]));
+      f.position.set(Math.cos(a) * 0.21, 0.2, Math.sin(a) * 0.21 - 0.02);
+      g.add(f);
+    }
+    head.add(g);
+    this.veil = g;
+  }
+
   update(dt) {
+    if (this.frozen) {
+      // Viajando en la aerosilla: quieta y sentada
+      this.velocity.set(0, 0, 0);
+      this.root.rotation.y = this.yaw;
+      this.character.animate(dt, 0, { carryFront: this.stack.count > 0 });
+      if (this.frozen === 'ride') this.character.legL.rotation.x = this.character.legR.rotation.x = -1.4;
+      if (this.horse) this.horse.root.visible = false;
+      this.stack.update(dt, 0, 0, this.yaw);
+      this.maxLabel.sprite.visible = false;
+      return;
+    }
     const dir = this.game.input.getDirection();
     // Pantalla → mundo: derecha = +X, abajo = +Z (la cámara mira hacia -Z)
     const spd = this.speed * this.game.speedMult(); // ⚡ turbo de Matías
@@ -89,6 +156,28 @@ export class PlayerController {
     this.stack.root.position.set(0.5 * kk, 0, -0.2 * kk);
 
     this.character.animate(dt, sp / CONFIG.player.speed, { carryFront: this.stack.count > 0 });
+    // A caballo: sentada en la montura y el caballo trota (durante el beso se baja)
+    const h = this.riding ? this.horse : null;
+    if (h) {
+      const riding = kk < 0.01;
+      h.root.visible = riding;
+      const c = this.character;
+      if (riding) {
+        const s = Math.min(1, sp / (CONFIG.player.speed + 1.6));
+        this.trot += dt * (4 + 9 * s);
+        const bob = Math.abs(Math.sin(this.trot)) * 0.08 * s;
+        c.body.position.y = h.saddleY - 0.5 + bob;
+        c.legL.rotation.x = c.legR.rotation.x = -0.35;
+        c.legL.rotation.z = -0.45;
+        c.legR.rotation.z = 0.45;
+        h.body.position.y = bob * 0.6;
+        h.legs.forEach((leg, i) => { leg.rotation.x = Math.sin(this.trot + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.6 * s; });
+        h.head.rotation.x = Math.sin(this.trot * 2) * 0.06 * s;
+        h.tail.rotation.x = 0.2 + Math.sin(this.trot) * 0.2 * s;
+      } else {
+        c.legL.rotation.z = c.legR.rotation.z = 0;
+      }
+    }
     this.stack.update(dt, this.velocity.x, this.velocity.z, this.yaw);
 
     // Cartel "MAX" sobre la pila cuando está llena (+ sonido al llenarse)

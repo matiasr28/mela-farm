@@ -10,7 +10,9 @@
 //    8: Las Flores (invernadero, colmenas, alfajorería y kiosco)
 //    9: La Laguna (pesca, freiduría, rotisería y cantina)
 //    10: Restaurante (mesas, cocina, mozo, propina) y la Fuente
-//    11+: una construcción especial por granja (+20%).
+//    11 a 20: ver world/Expansion.js (Zona Sur, La Chacra, Las Lomas, Las Sierras, La Costa,
+//    hostería, tren, barco, boda...).
+//    21+: se repiten los especiales (+20% cada uno).
 import * as THREE from 'three';
 import { ResourceNode } from '../entities/ResourceNode.js';
 import { ProductionUnit } from '../entities/ProductionUnit.js';
@@ -34,6 +36,7 @@ import {
 } from '../models/Models.js';
 import { CONFIG } from '../config.js';
 import { seeded } from '../utils.js';
+import { ExpansionMixin, SPECIALS_EXTRA, GERENCIAS_EXTRA, NEW_CONTENT } from './Expansion.js';
 
 const V = (x, z) => new THREE.Vector3(x, 0, z);
 const NORTH_MIN_Z = -38;
@@ -58,6 +61,19 @@ const SPECIALS = [
   { name: 'Fuente', icon: '⛲', model: createFountain, pos: V(-24, -53) },
 ];
 
+/** Todos los especiales en orden (Granja 6 = índice 0). Desde la Granja 21 se repiten. */
+const ALL_SPECIALS = [...SPECIALS, ...SPECIALS_EXTRA];
+
+/**
+ * Ingresos base de una granja: +0,5 por granja hasta la 10 y +0,75 desde la 11
+ * (los precios suben más despacio desde la 11: ver priceMultFor).
+ */
+export const incomeFor = (level) => 1 + 0.5 * Math.min(level - 1, 9) + 0.75 * Math.max(0, level - 10);
+/** Multiplicador de precios: ×1,3 por granja hasta la 10 y ×1,15 desde la 11. */
+export const priceMultFor = (level) => Math.pow(1.3, Math.min(level, 10) - 1) * Math.pow(1.15, Math.max(0, level - 10));
+/** Precio de mudarse a la granja siguiente: ×1,6 por granja hasta la 10 y ×1,35 desde la 11. */
+export const movePriceFor = (level) => 2500 * Math.pow(1.6, Math.min(level, 10) - 1) * Math.pow(1.35, Math.max(0, level - 10));
+
 /** Redondeo "lindo" de precios: 5, 10 o 50 según magnitud. */
 export const niceRound = (v) => (v < 100 ? Math.round(v / 5) * 5 : v < 1000 ? Math.round(v / 10) * 10 : Math.round(v / 50) * 50);
 
@@ -72,7 +88,7 @@ export class World {
     this.farmLevel = saved?.farmLevel ?? 1;
     this.specialBonus = 0; // +0,2 por cada construcción especial
     this.updateIncome();
-    this.priceMult = Math.pow(1.3, this.farmLevel - 1);
+    this.priceMult = priceMultFor(this.farmLevel);
     this.workerBonus = 0;
     this.growBonus = 0;
     this.ovenBonus = 0;
@@ -82,6 +98,9 @@ export class World {
     this.lakeDecor = []; // ídem para La Laguna (Granja 9)
     this.rodBonus = 0; // mejora Cañas: la orilla de pesca rinde más rápido
     this.storageMult = 1; // el Silo agranda comederos y pallets de los corrales
+    this.irrigation = 0; // Tanque australiano (Granja 13): +30% en todos los campos
+    // Decoración de las zonas de las Granjas 11 a 20 (se saca al abrir cada zona)
+    this.extraDecor = { sur: [], chacra: [], lomas: [], sierras: [], costa: [] };
 
     this.buildEnvironment();
 
@@ -115,6 +134,17 @@ export class World {
     this.flowerField = this.hives = this.alfajoreria = this.shop6 = null;
     this.fishField = this.freiduria = this.rotiseria = this.shop7 = null;
     this.restaurant = null;
+    // Granjas 11 a 20
+    this.yerbaField = this.secadero = this.shop8 = this.train = null;
+    this.caneField = this.ingenio = this.dulceria = null;
+    this.tomatoField = this.pastas = null;
+    this.potreroField = this.novillos = this.carniceria = this.parrilla = this.shop9 = null;
+    this.lavadero = this.hostel = this.cottonField = null;
+    this.pineField = this.aserradero = this.carpinteria = null;
+    this.grapeField = this.bodega = this.shop10 = null;
+    this.ship = this.deposit = null;
+    this.peanutField = this.chocolateria = this.shop11 = null;
+    this.wedding = null;
     this.eastOpen = this.westOpen = this.hillsOpen = this.floresOpen = this.lakeOpen = false;
     this.workers = [];
     this.cats = [];
@@ -145,6 +175,20 @@ export class World {
     // Ídem la Fuente (special4): ahora está en la plaza del Restaurante.
     const fi = savedUnlocked.indexOf('special4');
     if (fi >= 0 && !savedUnlocked.includes('restaurant')) savedUnlocked.splice(fi, 0, 'restaurant');
+    // Desde la Granja 11 los especiales son construcciones nuevas (Estación, Caballeriza...):
+    // quien ya los tenía de partidas viejas recibe antes lo que necesitan (su zona, la hostería...).
+    const withReqs = (id, out) => {
+      if (out.includes(id)) return;
+      const def = this.defs.find((d) => d.id === id && !d.repeat);
+      for (const r of def?.requires ?? []) if (!savedUnlocked.includes(r)) withReqs(r, out);
+      out.push(id);
+    };
+    const ordered = [];
+    for (const id of savedUnlocked) {
+      if (/^special([5-9]|1[0-4])$/.test(id)) withReqs(id, ordered);
+      else if (!ordered.includes(id)) ordered.push(id);
+    }
+    savedUnlocked.splice(0, savedUnlocked.length, ...ordered);
     for (const id of savedUnlocked) {
       if (MIGRATE[id]) { ups[MIGRATE[id]] = (ups[MIGRATE[id]] ?? 0) + 1; continue; }
       const def = this.defs.find((d) => d.id === id && !d.repeat);
@@ -317,6 +361,9 @@ export class World {
       { id: 'baker5', price: 16000, label: 'Ayudante Fito', icon: '🧑‍🍳', pos: V(-44.2, -57.2), requires: ['restaurant'], minLevel: 10,
         apply: worker({ role: 'baker', name: 'Fito', position: V(-44.2, -57.2), targets: () => [this.restaurant] }) },
 
+      // ----- Granjas 11 a 20 (world/Expansion.js) -----
+      ...this.expansionDefs(),
+
       // ----- Granja 6 en adelante: una construcción especial por granja (Molino, Silo, ...) -----
       ...this.specialDefs(),
 
@@ -334,7 +381,7 @@ export class World {
       // ----- Mejoras por niveles -----
       { id: 'cap', repeat: true, max: 8, growth: 1.55, price: 30, label: 'Mochila', icon: '🎒', pos: V(-2, 7.5), requires: [],
         apply: () => { this.player.stack.capacity += 4; } },
-      { id: 'speed', repeat: true, max: 6, growth: 1.6, price: 45, label: 'Botas', icon: '👟', pos: V(0.8, 7.5), requires: ['truck'],
+      { id: 'speed', repeat: true, fixedMax: true, max: 10, growth: 1.6, price: 45, label: 'Botas', icon: '👟', pos: V(0.8, 7.5), requires: ['truck'],
         apply: () => { this.player.speed += 0.5; } },
       { id: 'helpers', repeat: true, max: 6, growth: 1.6, price: 120, label: 'Ayudantes', icon: '💪', pos: V(3.6, 7.5), requires: ['farmer'],
         apply: () => { this.workerBonus++; this.workers.forEach((w) => w.applyBonus()); } },
@@ -370,8 +417,12 @@ export class World {
     const defs = [];
     for (let lvl = 6; lvl <= this.farmLevel; lvl++) {
       const k = lvl - 6;
-      const s = SPECIALS[k % SPECIALS.length];
-      const round = Math.floor(k / SPECIALS.length);
+      const s = ALL_SPECIALS[k % ALL_SPECIALS.length];
+      const round = Math.floor(k / ALL_SPECIALS.length);
+      if (k >= 5 && k < ALL_SPECIALS.length) {
+        defs.push(this.expansionSpecialDef(k, lvl));
+        continue;
+      }
       if (k === 0) {
         defs.push({
           id: 'special0', price: 6000, minLevel: lvl, requires: ['west'], label: s.name, icon: s.icon,
@@ -411,8 +462,9 @@ export class World {
         });
         continue;
       }
+      // Granja 21+: segunda ronda de especiales (sólo +20% de ingresos)
       defs.push({
-        id: `special${k}`, price: 6000 * Math.pow(1.4, k), minLevel: lvl, requires: ['east'],
+        id: `special${k}`, price: 40000 * Math.pow(1.1, k - ALL_SPECIALS.length), minLevel: lvl, requires: ['east'],
         label: round ? `${s.name} ${round + 1}` : s.name, icon: s.icon,
         pos: round ? V(-7.4, 11.6) : s.pos,
         apply: (i) => this.buildSpecial(s, round === 0, i),
@@ -438,6 +490,11 @@ export class World {
       kiosco: { name: 'Kiosco', shop: () => this.shop6, parts: () => [this.hives, this.alfajoreria] },
       cantina: { name: 'Cantina', shop: () => this.shop7, parts: () => [this.freiduria, this.rotiseria] },
       restaurante: { name: 'Restaurante', shop: () => this.restaurant, parts: () => [this.restaurant] },
+      pulperia: { name: 'Pulpería', shop: () => this.shop8, parts: () => [this.secadero, this.ingenio, this.dulceria] },
+      bodegon: { name: 'Bodegón', shop: () => this.shop9, parts: () => [this.novillos, this.carniceria, this.parrilla, this.pastas] },
+      hosteria: { name: 'Hostería', shop: () => this.hostel, parts: () => [this.lavadero] },
+      vinoteca: { name: 'Vinoteca', shop: () => this.shop10, parts: () => [this.bodega] },
+      chocolates: { name: 'Casa de Chocolates', shop: () => this.shop11, parts: () => [this.chocolateria] },
     };
   }
 
@@ -452,13 +509,15 @@ export class World {
       ['kiosco', 16000, ['cashier6', 'carrier6'], 'Chola', V(57.2, 7.8)],
       ['cantina', 20000, ['cashier7', 'carrier7'], 'Tota', V(55.2, -57.2)],
       ['restaurante', 26000, ['waiter', 'baker5'], 'Beba', V(-40.6, -56.4)],
+      ...GERENCIAS_EXTRA.map(([key, , price, requires, boss, , pos]) => [key, price, requires, boss, pos]),
     ];
+    const FEMALE = ['Marta', 'Vicky', 'Pocha', 'Chola', 'Tota', 'Beba', ...GERENCIAS_EXTRA.filter((g) => g[5]).map((g) => g[4])];
     return B.map(([key, price, requires, boss, pos]) => {
-      const name = { tienda: 'Tienda', almacen: 'Almacén', feria: 'Feria', mercado: 'Mercado', parador: 'Parador', kiosco: 'Kiosco', cantina: 'Cantina', restaurante: 'Restaurante' }[key];
+      const name = this.businesses()[key].name;
       return {
         id: `ger_${key}`, repeat: true, fixedMax: true, max: 3, growth: 3, price, requires, pos,
         label: `Gerencia ${name}`, icon: '📋',
-        levelLabels: [`${['Marta', 'Vicky', 'Pocha', 'Chola', 'Tota', 'Beba'].includes(boss) ? 'Encargada' : 'Encargado'} ${boss}`, 'Caja propia', 'Gerencia a full'],
+        levelLabels: [`${FEMALE.includes(boss) ? 'Encargada' : 'Encargado'} ${boss}`, 'Caja propia', 'Gerencia a full'],
         needs: () => !!this.businesses()[key].shop(),
         apply: (i) => this.applyGerencia(key, (this.applied[`ger_${key}`] ?? 0) + 1, boss, pos, i),
       };
@@ -472,7 +531,8 @@ export class World {
       // El encargado reparte lo que haga falta entre los talleres, corrales y la estantería del negocio
       this.spawnWorker({ role: 'manager', name: boss, position: pos.clone().add(V(0, 1.2)), instant,
         targets: () => [...biz.parts().filter(Boolean).map((x) => this.sinkOf(x)), this.sinkOf(shop)] });
-      if (!instant) this.game.chatter?.say(this.player, `¡${boss} se encarga de la ${biz.name}! 📋`, 3);
+      const art = ['Almacén', 'Mercado', 'Parador', 'Kiosco', 'Restaurante', 'Bodegón'].includes(biz.name) ? 'del' : 'de la';
+      if (!instant) this.game.chatter?.say(this.player, `¡${boss} se encarga ${art} ${biz.name}! 📋`, 3);
     } else if (level === 2) {
       shop.autoBank = true;
       // Lo que ya estaba en la pila se cobra solo
@@ -547,27 +607,32 @@ export class World {
         '🤵 Mozo Pipo y 🧑‍🍳 Ayudante Fito · ¡propina si servís rápido!',
         '⛲ Fuente: atrae más comensales',
       ],
+      ...NEW_CONTENT,
     }[level];
     if (items) return items;
-    const s = SPECIALS[(level - 6) % SPECIALS.length];
-    return [`${s.icon} ${s.name}: +20% de ingresos`];
+    const s = ALL_SPECIALS[(level - 6) % ALL_SPECIALS.length];
+    return [`${s.icon} ${s.name} ${Math.floor((level - 6) / ALL_SPECIALS.length) + 1}: +20% de ingresos`];
   }
 
   updateIncome() {
-    this.game.incomeMult = Math.round((1 + 0.5 * (this.farmLevel - 1) + this.specialBonus) * 100) / 100;
+    this.game.incomeMult = Math.round((incomeFor(this.farmLevel) + this.specialBonus) * 100) / 100;
     this.game.hud?.setFarm(this.farmLevel, this.game.incomeMult);
   }
 
   fields() {
     return [this.field, this.wheatField, this.pumpkinField, this.berryField, this.appleField, this.sunflowerField, this.grassField,
-      this.flowerField, this.fishField].filter(Boolean);
+      this.flowerField, this.fishField, this.yerbaField, this.caneField, this.tomatoField, this.potreroField, this.pineField,
+      this.grapeField, this.peanutField, this.cottonField].filter(Boolean);
   }
-  animalUnits() { return [this.coop, this.barn, this.sheep, this.goats, this.hives].filter(Boolean); }
+  animalUnits() { return [this.coop, this.barn, this.sheep, this.goats, this.hives, this.novillos].filter(Boolean); }
   processors() {
     return [this.bakery, this.sweets, this.pastry, this.knit, this.icecream, this.juicery, this.mill, this.oilery, this.facturas,
-      this.queseria, this.pizzeria, this.alfajoreria, this.freiduria, this.rotiseria].filter(Boolean);
+      this.queseria, this.pizzeria, this.alfajoreria, this.freiduria, this.rotiseria, this.secadero, this.ingenio, this.dulceria,
+      this.pastas, this.carniceria, this.parrilla, this.lavadero, this.aserradero, this.carpinteria, this.bodega, this.chocolateria].filter(Boolean);
   }
-  shops() { return [this.shop, this.shop2, this.shop3, this.shop4, this.shop5, this.shop6, this.shop7].filter(Boolean); }
+  shops() {
+    return [this.shop, this.shop2, this.shop3, this.shop4, this.shop5, this.shop6, this.shop7, this.shop8, this.shop9, this.shop10, this.shop11].filter(Boolean);
+  }
 
   maxLevel(def) { return def.fixedMax ? def.max : def.max + 2 * (this.farmLevel - 1); }
   requirementsMet(def) {
@@ -604,7 +669,7 @@ export class World {
     // Prestigio: mudarse a una granja más grande
     if (!this.zones.has('move') && this.allDone()) {
       this.zones.set('move', new UnlockZone(this.game, {
-        position: V(-7.4, 8.9), price: niceRound(2500 * Math.pow(1.6, this.farmLevel - 1)),
+        position: V(-7.4, 8.9), price: niceRound(movePriceFor(this.farmLevel)),
         label: `Granja ${this.farmLevel + 1}`, icon: '🏡', instant, size: 2.8,
         onComplete: () => this.prestige(),
       }));
@@ -655,7 +720,7 @@ export class World {
       missions: this.game.missions?.serialize(),
     });
     this.resetting = true;
-    this.game.showLevelUp(next, this.newContentFor(next));
+    this.game.showLevelUp(next, this.newContentFor(next), incomeFor(next) + this.specialBonus);
   }
 
   save() {
@@ -675,9 +740,9 @@ export class World {
     return f;
   }
 
-  /** Velocidad de un campo: Fertilizante (+25% por nivel) y, en la orilla de pesca, Cañas (+30%). */
+  /** Velocidad de un campo: Fertilizante (+25% por nivel), riego del Tanque (+30%) y, en la orilla de pesca, Cañas (+30%). */
   fieldGrow(f) {
-    return 1 + 0.25 * (this.growBonus ?? 0) + (f.type === 'fish' ? 0.3 * (this.rodBonus ?? 0) : 0);
+    return 1 + 0.25 * (this.growBonus ?? 0) + (this.irrigation ?? 0) + (f.type === 'fish' ? 0.3 * (this.rodBonus ?? 0) : 0);
   }
 
   spawnWorker(opts) {
@@ -1440,10 +1505,20 @@ export class World {
     const fz0 = b.minZ - 0.6;
     const fz1 = b.maxZ + 0.6;
     this.fence = new THREE.Group();
+    // Tramo con huecos: [a, b] es el recorrido y gaps los pedazos sin cerco (ruta, vías, muelle)
+    const span = (a, b, gaps, make) => {
+      let s = a;
+      for (const [g0, g1] of [...gaps].sort((x, y) => x[0] - y[0])) {
+        if (g1 <= s || g0 >= b) continue;
+        if (g0 - s > 0.5) this.fence.add(make(s, g0));
+        s = Math.max(s, g1);
+      }
+      if (b - s > 0.5) this.fence.add(make(s, b));
+    };
+    const gaps = this.fenceGaps();
     this.fence.add(createFenceLine(fx0, fz0, fx1, fz0, 1.6));
-    this.fence.add(createFenceLine(fx0, fz1, fx1, fz1, 1.6));
-    this.fence.add(createFenceLine(fx0, fz0, fx0, fz1, 1.6));
-    this.fence.add(createFenceLine(fx1, fz0, fx1, fz1, 1.6));
+    span(fx0, fx1, gaps.south, (a, c) => createFenceLine(a, fz1, c, fz1, 1.6));
+    for (const x of [fx0, fx1]) span(fz0, fz1, gaps.side, (a, c) => createFenceLine(x, a, x, c, 1.6));
     bakeGroup(this.fence);
     this.scene.add(this.fence);
   }
@@ -1553,6 +1628,9 @@ export class World {
       else if (inFlores(x, z)) this.floresDecor.push(o);
       else if (inHills(x, z)) this.hillsDecor.push(o);
     };
+    // Granjas 11 a 20: paisaje alrededor y, más lejos, el río
+    this.stageExtraScenery(stage);
+    this.buildRiver();
 
     // Árboles (verdes y otoñales), arbustos y rocas alrededor
     for (let i = 0; i < 130; i++) {
@@ -1629,7 +1707,7 @@ export class World {
     const flowerGeo = new THREE.SphereGeometry(0.1, 8, 6);
     const flowerMat = new THREE.MeshStandardMaterial({ roughness: 0.8 });
     const tuftMat = mat('#4fae35');
-    const buckets = [null, this.westDecor, this.hillsDecor, this.floresDecor].map((decor) => ({
+    const buckets = [null, this.westDecor, this.hillsDecor, this.floresDecor, this.extraDecor.sur].map((decor) => ({
       decor, tufts: new THREE.InstancedMesh(tuftGeo, tuftMat, 700), flowers: new THREE.InstancedMesh(flowerGeo, flowerMat, 300), nt: 0, nf: 0,
     }));
     const flowerColors = ['#ffffff', '#ffd166', '#ef476f', '#a29bfe', '#ff9f1c'].map((c) => new THREE.Color(c));
@@ -1644,7 +1722,7 @@ export class World {
       const s = 0.7 + rnd() * 0.8;
       dummy.scale.set(s, s, s);
       dummy.updateMatrix();
-      const bk = buckets[inWest(x, z) ? 1 : inFlores(x, z) ? 3 : inHills(x, z) ? 2 : 0];
+      const bk = buckets[inWest(x, z) ? 1 : inFlores(x, z) ? 3 : inHills(x, z) ? 2 : this.extraZoneOf(x, z) === 'sur' ? 4 : 0];
       if (rnd() < 0.7 && nt < 700) {
         bk.tufts.setMatrixAt(bk.nt++, dummy.matrix);
         nt++;
@@ -1666,6 +1744,14 @@ export class World {
     // así al abrirla se saca entero como antes.
     const decorOf = new Map();
     for (const arr of [this.westDecor, this.hillsDecor, this.floresDecor, this.lakeDecor]) for (const o of arr) decorOf.set(o, arr);
+    // Lo que quedó suelto dentro de una zona de las Granjas 11 a 20 se saca cuando se abre esa zona
+    const wp = new THREE.Vector3();
+    for (const o of staged) {
+      if (decorOf.has(o)) continue;
+      o.getWorldPosition(wp);
+      const key = this.extraZoneOf(wp.x, wp.z);
+      if (key) { this.extraDecor[key].push(o); decorOf.set(o, this.extraDecor[key]); }
+    }
     const groups = new Map();
     for (const o of staged) {
       const arr = decorOf.get(o) ?? null;
@@ -1705,3 +1791,6 @@ export class World {
     return tex;
   }
 }
+
+// Granjas 11 a 20: zonas, construcciones, especiales y la boda
+Object.assign(World.prototype, ExpansionMixin);

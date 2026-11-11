@@ -30,13 +30,16 @@ export class Hud {
   }
 
   /** Chips de boosts activos (⚡ turbo / 🏷️ promo / 💕 enamorada) con cuenta regresiva. */
-  setBoosts(speed, sales, love = 0) {
+  setBoosts(speed, sales, love = 0, pena = 0, fiesta = 0, horse = 0) {
     this.boostEl ??= document.getElementById('boosts');
     if (!this.boostEl) return;
     const parts = [];
     if (love > 0) parts.push(`💕 Enamorada ${Math.ceil(love)}s`);
     if (speed > 0) parts.push(`⚡ ${Math.ceil(speed)}s`);
     if (sales > 0) parts.push(`🏷️ +25% ${Math.ceil(sales)}s`);
+    if (horse > 0) parts.push(`🐎 ${Math.ceil(horse)}s`);
+    if (pena > 0) parts.push(`🎻 Peña ${Math.ceil(pena)}s`);
+    if (fiesta > 0) parts.push(`🎆 Fiesta +50% ${Math.ceil(fiesta)}s`);
     const text = parts.join('  ');
     if (text !== this.lastBoost) {
       this.lastBoost = text;
@@ -46,8 +49,20 @@ export class Hud {
   }
 
   setFarm(level, mult) {
+    this.farmText = mult > 1 ? `🏡 Granja ${level} · 💰 x${mult}` : `🏡 Granja ${level}`;
+    this.paintBadge();
+  }
+
+  /** Momento del día (☀️ / 🌇 / 🌙 / 🌅) al lado de la granja. */
+  setDayIcon(icon) {
+    if (icon === this.dayIcon) return;
+    this.dayIcon = icon;
+    this.paintBadge();
+  }
+
+  paintBadge() {
     const el = document.getElementById('farm-badge');
-    if (el) el.textContent = mult > 1 ? `🏡 Granja ${level} · 💰 x${mult}` : `🏡 Granja ${level}`;
+    if (el) el.textContent = `${this.farmText ?? ''}${this.dayIcon ? ` · ${this.dayIcon}` : ''}`;
   }
 
   setMoney(v, instant = false) {

@@ -1,5 +1,7 @@
 // Truck: camión de entregas. Llega por la ruta, muestra un pedido (maíz/huevos/leche),
 // el jugador lo carga desde la zona al costado y, al completarlo, paga y se va.
+// La misma clase maneja el tren de la Estación (Granja 11) y el barco del Puerto (Granja 18):
+// cambian el modelo, el tamaño de los pedidos y lo que pagan.
 import * as THREE from 'three';
 import { createTruck, ITEMS } from '../models/Models.js';
 import { Pile } from '../systems/Pile.js';
@@ -9,31 +11,44 @@ import { CanvasLabel, drawOrderBubble } from '../core/Labels.js';
 import { CONFIG } from '../config.js';
 
 export class Truck {
-  constructor(game, { parkPos, enterX = -40, exitX = 45 }) {
+  constructor(game, {
+    parkPos, enterX = -40, exitX = 45, createModel = createTruck, rewardMult = CONFIG.truck.rewardMult,
+    budgetMult = 1, returnTime = CONFIG.truck.returnTime, startLevel = 0, maxKinds = 3, premium = null,
+    dropOffset = new THREE.Vector3(-1.0, 0, -3.4), cashOffset = new THREE.Vector3(2.4, 0, -3.4), bedMax = 80,
+    roles = ['player', 'trucker'], boardOffset = new THREE.Vector3(1.4, 3.1, 0.6), maxSpeed = 12, onDepart = null,
+  }) {
     this.game = game;
     this.park = parkPos.clone();
     this.enterX = enterX;
     this.exitX = exitX;
     this.order = {};
     this.delivered = {};
+    this.rewardMult = rewardMult;
+    this.budgetMult = budgetMult;
+    this.returnTime = returnTime;
+    this.maxKinds = maxKinds;
+    this.premium = premium; // tipos preferidos (barco: productos caros)
+    this.boardOffset = boardOffset;
+    this.maxSpeed = maxSpeed;
+    this.onDepart = onDepart;
 
-    this.model = createTruck();
+    this.model = createModel();
     this.root = this.model.root;
     this.root.rotation.y = Math.PI / 2; // frente hacia +X
     this.root.position.set(enterX, 0, parkPos.z);
     game.scene.add(this.root);
 
     this.bedPile = new Pile(game, {
-      parent: this.model.bedAnchor, type: null, cols: 3, rows: 4, max: 80, spacing: [0.55, 0.6], layerHeight: 0.24,
+      parent: this.model.bedAnchor, type: null, cols: 3, rows: 4, max: bedMax, spacing: [0.55, 0.6], layerHeight: 0.24,
     });
 
     // Zona de carga al costado (lado norte) del camión estacionado
     this.dropZone = new TransferZone(game, {
-      position: new THREE.Vector3(parkPos.x - 1.0, 0, parkPos.z - 3.4), mode: 'drop',
-      types: Object.keys(ITEMS).filter((t) => !['cash', 'breakfast', 'sandwich', 'stew', 'dessert'].includes(t)),
-      target: this, roles: ['player', 'trucker'],
+      position: parkPos.clone().add(dropOffset).setY(0), mode: 'drop',
+      types: Object.keys(ITEMS).filter((t) => t !== 'cash' && !ITEMS[t].dish),
+      target: this, roles,
     });
-    this.cashPile = new CashPile(game, { position: new THREE.Vector3(parkPos.x + 2.4, 0, parkPos.z - 3.4) });
+    this.cashPile = new CashPile(game, { position: parkPos.clone().add(cashOffset).setY(0) });
 
     this.board = new CanvasLabel(420, 150, 1.25, (ctx, W, H) => this.drawBoard(ctx, W, H));
     this.board.sprite.visible = false;
@@ -41,7 +56,7 @@ export class Truck {
 
     this.state = 'away';
     this.timer = 1;
-    this.completed = 0;
+    this.completed = startLevel;
     this.speed = 0;
     this.doneTimer = -1;
     game.add(this);
@@ -68,24 +83,21 @@ export class Truck {
     const lvl = this.completed;
     const f = this.game.flags;
     // Productos que la granja ya puede producir
-    const avail = ['corn'];
-    if (lvl >= 1) avail.push('egg');
-    if (f.milk) avail.push('milk');
-    if (f.wheat) avail.push('wheat');
-    if (f.bread) avail.push('bread');
-    if (f.pumpkin) avail.push('pumpkin');
-    if (f.jam) avail.push('jam');
-    if (f.cake) avail.push('cake');
-    for (const t of ['wool', 'scarf', 'strawberry', 'icecream', 'apple', 'juice', 'sunflower', 'flour', 'oil', 'croissant', 'grass', 'goatmilk', 'cheese', 'pizza', 'flower', 'honey', 'alfajor', 'fish', 'friedfish', 'empanada']) if (f[t]) avail.push(t);
+    // (cada producto tiene una bandera con su mismo nombre cuando la granja ya lo produce)
+    let avail = Object.keys(ITEMS).filter((t) => t !== 'cash' && !ITEMS[t].dish && (t === 'corn' || (t === 'egg' && lvl >= 1) || f[t]));
+    if (this.premium) {
+      const best = avail.filter((t) => this.premium.includes(t));
+      if (best.length >= 2) avail = best;
+    }
 
     const o = {};
     if (lvl < 2) {
       o.corn = 4 + lvl * 2;
       if (lvl === 1) o.egg = 3;
     } else {
-      const kinds = Math.min(avail.length, Math.random() < 0.5 ? 2 : 3);
+      const kinds = Math.min(avail.length, Math.random() < 0.5 ? this.maxKinds - 1 : this.maxKinds);
       const pool = [...avail];
-      const budget = 10 + lvl * 4; // "valor" del pedido en unidades de precio
+      const budget = (10 + Math.min(lvl, 60) * 4) * this.budgetMult; // "valor" del pedido en unidades de precio
       for (let i = 0; i < kinds; i++) {
         const t = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
         o[t] = Math.max(1, Math.min(20, Math.round(budget / kinds / ITEMS[t].price)));
@@ -99,7 +111,7 @@ export class Truck {
 
   reward() {
     const base = Object.entries(this.order).reduce((s, [t, n]) => s + ITEMS[t].price * n, 0);
-    return Math.round(base * CONFIG.truck.rewardMult * this.game.saleMult());
+    return Math.round(base * this.rewardMult * this.game.saleMult());
   }
 
   rollWheels(dist) {
@@ -119,7 +131,7 @@ export class Truck {
         break;
       case 'arriving': {
         const d = this.park.x - pos.x;
-        const v = Math.min(12, Math.max(1.2, d * 2)); // frena al llegar
+        const v = Math.min(this.maxSpeed, Math.max(1.2, d * 2)); // frena al llegar
         const step = Math.min(d, v * dt);
         pos.x += step;
         this.rollWheels(step);
@@ -137,13 +149,13 @@ export class Truck {
         }
         break;
       case 'leaving': {
-        this.speed = Math.min(14, this.speed + dt * 10);
+        this.speed = Math.min(this.maxSpeed + 2, this.speed + dt * 10);
         const step = this.speed * dt;
         pos.x += step;
         this.rollWheels(step);
         if (pos.x > this.exitX) {
           this.state = 'away';
-          this.timer = CONFIG.truck.returnTime;
+          this.timer = this.returnTime;
           this.bedPile.clear();
         }
         break;
@@ -151,7 +163,8 @@ export class Truck {
     }
     this.dropZone.enabled = this.state === 'waiting';
     this.board.sprite.visible = this.state === 'waiting' || this.state === 'arriving';
-    this.board.sprite.position.set(pos.x + 1.4, 3.1, pos.z + 0.6); // sobre la cabina, sin tapar la zona de carga
+    const bo = this.boardOffset;
+    this.board.sprite.position.set(pos.x + bo.x, bo.y, pos.z + bo.z); // sobre la cabina, sin tapar la zona de carga
   }
 
   depart() {
@@ -161,6 +174,7 @@ export class Truck {
     this.game.fx.floatText(`+$${amount}`, from.clone().setY(3.2), '#9bff8a');
     this.game.audio.play('register', { pos: from });
     this.game.emit('truck', {});
+    this.onDepart?.(amount);
     this.completed++;
     this.state = 'leaving';
     this.speed = 0;

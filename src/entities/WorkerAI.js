@@ -3,6 +3,8 @@
 //  - 'carrier' : junta productos de los pallets → repone las estanterías de su tienda.
 //  - 'cashier' : se queda en la caja de su tienda atendiendo clientes.
 //  - 'baker'   : abastece talleres de recetas mixtas (Facturería, Pastelería) desde pallets y campos.
+//  - 'trucker' : carga un vehículo (camión de Ramón, barco del Puerto de Héctor).
+//  - 'maid'    : mucama de la Hostería: lleva 🛏️ sábanas a las cabañas sucias y 🪑 muebles a las vacías.
 // Las transferencias las hacen las propias zonas (TransferZone / ResourceNode):
 // la IA sólo decide a dónde caminar y cuándo cambiar de estado.
 import * as THREE from 'three';
@@ -56,6 +58,37 @@ export const LOOKS = {
   pocha: { shirt: '#c1121f', pants: '#2b2b2b', hair: '#6b3e26', hairStyle: 'ponytail', tie: '#ffffff', voice: 1.2 },
   julio: { shirt: '#ffffff', pants: '#3d405b', hair: '#cfcfcf', hat: 'cap', hatColor: '#ffffff', shoes: '#2b2b2b', voice: 0.7 },
   ramon: { shirt: '#d9473b', pants: '#2f4f7f', hair: '#4a3020', hat: 'cap', hatColor: '#ffffff', shoes: '#3a2a1e', voice: 0.6 },
+  // ----- Granjas 11 a 20 -----
+  chiche: { shirt: '#7bcc45', overalls: '#5c4033', hair: '#2b1d0e', hairStyle: 'long', hat: 'straw', hatColor: '#f6d785', skin: '#c68642', voice: 1.2 },
+  tincho: { shirt: '#3a86ff', pants: '#2b2b2b', hair: '#111111', hat: 'cap', hatColor: '#ffd23f', voice: 0.95 },
+  yoli: { shirt: '#ff9f1c', pants: '#264653', hair: '#6b3e26', hairStyle: 'ponytail', voice: 1.3 },
+  pepe: { shirt: '#ffffff', overalls: '#7a5230', hair: '#cfcfcf', hat: 'straw', hatColor: '#e9c46a', skin: '#e0ac69', voice: 0.7 },
+  elsa: { shirt: '#f4a261', pants: '#ffffff', hair: '#cfcfcf', hairStyle: 'bun', hat: 'cap', hatColor: '#ffffff', voice: 1.15 },
+  quique: { shirt: '#e8302a', overalls: '#3f6fb5', hair: '#3d2b1f', hat: 'cap', hatColor: '#7bcc45', voice: 0.9 },
+  pina: { shirt: '#ffffff', pants: '#2e8b57', hair: '#e8e8e8', hairStyle: 'bun', tie: '#e8302a', skin: '#f2c299', voice: 1.1 },
+  ciro: { shirt: '#f2f2f2', pants: '#2b2b2b', hair: '#2b1d0e', hat: 'straw', hatColor: '#2b2b2b', tie: '#c0392b', skin: '#c68642', voice: 0.7 },
+  chacho: { shirt: '#c0392b', pants: '#2b2b2b', hair: '#111111', hat: 'cap', hatColor: '#2b2b2b', shoes: '#2b2b2b', voice: 0.75 },
+  nati: { shirt: '#9b5de5', pants: '#3d405b', hair: '#d9541e', hairStyle: 'long', voice: 1.25 },
+  gaspar: { shirt: '#ffcf3a', pants: '#2b3a55', hair: '#d4a373', hat: 'cap', hatColor: '#c0392b', voice: 1.0 },
+  mabel: { shirt: '#74acdf', pants: '#ffffff', hair: '#3d2b1f', hairStyle: 'bun', tie: '#ffffff', skin: '#e0ac69', voice: 1.2 },
+  tere: { shirt: '#bfe3ff', pants: '#3d405b', hair: '#b5651d', hairStyle: 'ponytail', voice: 1.25 },
+  lucia: { shirt: '#b23a48', pants: '#2b2b2b', hair: '#111111', hairStyle: 'long', tie: '#ffd23f', voice: 1.3 },
+  moncho: { shirt: '#c0392b', overalls: '#2b3a55', hair: '#5c4033', hat: 'cap', hatColor: '#2e7d32', voice: 0.65 },
+  fermin: { shirt: '#e8d3a8', overalls: '#8e5229', hair: '#cfcfcf', hat: 'cap', hatColor: '#8e5229', voice: 0.75 },
+  flor: { shirt: '#ff8fab', overalls: '#6a2c91', hair: '#f7d55c', hairStyle: 'long', hat: 'straw', hatColor: '#f6d785', voice: 1.3 },
+  santi: { shirt: '#3b1020', pants: '#2b2b2b', hair: '#6b3e26', tie: '#ffffff', voice: 0.95 },
+  cami: { shirt: '#6a2c91', pants: '#264653', hair: '#2b1d0e', hairStyle: 'bun', voice: 1.25 },
+  hector: { shirt: '#2f4f7f', pants: '#2b2b2b', hair: '#cfcfcf', hat: 'cap', hatColor: '#ffffff', shoes: '#2b2b2b', voice: 0.6 },
+  rami: { shirt: '#d4a373', overalls: '#3f6fb5', hair: '#111111', hat: 'straw', hatColor: '#e9c46a', skin: '#8d5524', voice: 0.85 },
+  greta: { shirt: '#5a3220', pants: '#ffffff', hair: '#f7d55c', hairStyle: 'bun', hat: 'cap', hatColor: '#ffffff', voice: 1.2 },
+  bruno: { shirt: '#e8503f', pants: '#3d405b', hair: '#d4a373', voice: 0.9 },
+  maru: { shirt: '#7bcc45', pants: '#2b3a55', hair: '#111111', hairStyle: 'ponytail', skin: '#c68642', voice: 1.3 },
+  // Encargados de la Gerencia de los negocios nuevos
+  aldo: { shirt: '#2e7d32', pants: '#2b2b2b', hair: '#cfcfcf', tie: '#ffd23f', voice: 0.7 },
+  ramona: { shirt: '#c0392b', pants: '#2b2b2b', hair: '#2b1d0e', hairStyle: 'bun', tie: '#ffffff', skin: '#c68642', voice: 1.15 },
+  susana: { shirt: '#b23a48', pants: '#2b2b2b', hair: '#f7d55c', hairStyle: 'bun', tie: '#ffffff', voice: 1.2 },
+  pedro: { shirt: '#3b1020', pants: '#2b2b2b', hair: '#111111', tie: '#ffd23f', voice: 0.75 },
+  irma: { shirt: '#5a3220', pants: '#2b2b2b', hair: '#cfcfcf', hairStyle: 'long', tie: '#e8503f', voice: 1.1 },
 };
 
 export class WorkerAI {
@@ -69,7 +102,7 @@ export class WorkerAI {
    * @param {() => object} [opts.shop]     carrier/cashier: tienda que atiende
    * @param {() => object[]} [opts.targets] baker: talleres que abastece
    */
-  constructor(game, world, { role, name, position, field, unit, sources, shop, targets, errand, instant = false }) {
+  constructor(game, world, { role, name, position, field, unit, sources, shop, targets, errand, vehicle, idle, talkRole, instant = false }) {
     this.game = game;
     this.world = world;
     this.role = role;
@@ -80,6 +113,9 @@ export class WorkerAI {
     this.getShop = shop;
     this.getTargets = targets;
     this.getErrand = errand; // granjero: () => ({ type, from, to }) — insumo extra que lleva entre cosechas
+    this.getVehicle = vehicle ?? (() => world.truck); // camionero: qué vehículo carga (camión o barco)
+    this.idle = idle?.clone() ?? null;
+    this.talkRole = talkRole ?? role; // para las charlas (ej. el despachante habla del barco)
     this.fetching = false;
     this.home = position.clone();
 
@@ -96,14 +132,14 @@ export class WorkerAI {
     this.bubbleY = 2.35;
 
     this.position = this.root.position;
-    this.baseCapacity = role === 'trucker' ? 10 : role === 'carrier' || role === 'baker' || role === 'manager' ? 8 : role === 'waiter' ? 4 : 6;
+    this.baseCapacity = role === 'trucker' ? 10 : role === 'carrier' || role === 'baker' || role === 'manager' ? 8 : role === 'waiter' || role === 'maid' ? 4 : 6;
     this.stack = new StackManager(game, this.character.frontAnchor, this.baseCapacity);
     this.stack.onLand = () => game.audio.play('pop', { pos: this.position, volume: 0.5 });
     this.canHarvest = role === 'farmer';
     this.harvestTypes = role === 'farmer' ? [field().type] : null;
     this.applyBonus();
 
-    this.state = role === 'farmer' ? 'gather' : role === 'trucker' || role === 'baker' || role === 'manager' ? 'load' : 'pickup';
+    this.state = role === 'farmer' ? 'gather' : role === 'trucker' || role === 'baker' || role === 'manager' || role === 'maid' ? 'load' : 'pickup';
     this.job = null;
     this.noProgress = 0;
     this.lastCount = 0;
@@ -128,11 +164,22 @@ export class WorkerAI {
   }
 
   update(dt) {
+    // Boda (Granja 20): todos al jardín de la estancia, mirando al altar
+    const seat = this.world.wedding?.seats.get(this);
+    if (seat) {
+      this.target.copy(seat);
+      this.canHarvest = false;
+      this.moveTowards(dt);
+      const c = this.world.wedding.center;
+      if (distXZ2(this.position, seat) < 0.05) this.root.rotation.y = this.yaw = lerpAngle(this.yaw, Math.atan2(c.x - this.position.x, c.z - this.position.z), 1 - Math.exp(-dt * 6));
+      return;
+    }
     if (this.role === 'farmer') this.thinkFarmer(dt);
     else if (this.role === 'carrier') this.thinkCarrier(dt);
     else if (this.role === 'trucker') this.thinkTrucker(dt);
     else if (this.role === 'baker' || this.role === 'manager') this.thinkBaker(dt); // encargado: misma lógica, más destinos
     else if (this.role === 'waiter') this.thinkWaiter(dt);
+    else if (this.role === 'maid') this.thinkMaid(dt);
     else this.target.copy(this.getShop().cashierSpot);
     this.moveTowards(dt);
   }
@@ -141,7 +188,7 @@ export class WorkerAI {
   // Camionero: lee el pedido del camión, junta lo que falta y lo carga.
   // ---------------------------------------------------------------------------
   thinkTrucker(dt) {
-    const truck = this.world.truck;
+    const truck = this.getVehicle();
     const waiting = truck && truck.state === 'waiting' && truck.doneTimer < 0;
     const remaining = (t) => (truck.order[t] ?? 0) - (truck.delivered[t] ?? 0);
 
@@ -210,7 +257,48 @@ export class WorkerAI {
     return fallback;
   }
 
-  idleSpot() { return new THREE.Vector3(-14.2, 0, 11.4); }
+  idleSpot() { return this.idle ?? new THREE.Vector3(-14.2, 0, 11.4); }
+
+  // ---------------------------------------------------------------------------
+  // Mucama (Hostería): junta 🛏️ sábanas del Lavadero para las cabañas sucias y, si están todas
+  // limpias, 🪑 muebles de la Carpintería para las que todavía no están amuebladas.
+  // ---------------------------------------------------------------------------
+  thinkMaid(dt) {
+    const w = this.world;
+    const h = w.hostel;
+    if (!h) { this.target.copy(this.home); return; }
+    if (this.stack.count !== this.lastCount) { this.lastCount = this.stack.count; this.noProgress = 0; } else this.noProgress += dt;
+    const dirty = h.dirtyCabins();
+    const bare = w.carpinteria ? h.unfurnishedCabins() : [];
+    const nearest = (list) => list.reduce((b, c) => (!b || distXZ2(c.zone.position, this.position) < distXZ2(b.zone.position, this.position) ? c : b), null);
+
+    if (this.state === 'deliver') {
+      if (this.stack.count === 0) { this.state = 'load'; this.job = null; return; }
+      const type = this.stack.countOf('sheets') ? 'sheets' : 'chair';
+      const list = type === 'sheets' ? dirty : bare;
+      if (!list.length) { this.target.copy(this.home); return; } // espera con lo que lleva hasta que haga falta
+      this.target.copy(nearest(list).zone.position);
+      return;
+    }
+
+    // state 'load'
+    if (!this.job) {
+      this.job = dirty.length && w.lavadero ? 'sheets' : bare.length ? 'chair' : null;
+      this.wait = 0;
+      if (!this.job) { this.target.copy(this.home); return; }
+    }
+    const src = this.job === 'sheets' ? w.lavadero : w.carpinteria;
+    const need = (this.job === 'sheets' ? dirty : bare).length;
+    if (!src || !need) { this.job = null; if (this.stack.count) this.state = 'deliver'; return; }
+    const cap = this.baseCapacity + (w.workerBonus || 0) * 2;
+    this.stack.capacity = Math.max(this.stack.count, Math.min(cap, need));
+    this.target.copy(src.pickupZone.position);
+    if (distXZ2(this.position, this.target) > 0.6) { this.wait = 0; return; }
+    this.wait += dt;
+    const empty = !src.outputPile.hasLanded();
+    if (this.stack.isFull || (this.stack.count > 0 && empty && this.wait > 1.5)) this.state = 'deliver';
+    else if (this.stack.count === 0 && this.wait > 10) this.job = null; // probar con la otra tarea
+  }
 
   // ---------------------------------------------------------------------------
   // Panadero: mira qué insumo le falta a cada taller de receta mixta, lo junta

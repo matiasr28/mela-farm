@@ -77,7 +77,7 @@ export class TransferZone {
       for (const c of this.game.carriers) {
         // Un granjero "de mandado" (ver WorkerAI.thinkFarmer) también puede recoger de los pallets
         const errand = this.mode === 'pickup' && c.fetching && this.roles.includes('carrier');
-        if (!this.roles.includes(c.role) && !errand) continue;
+        if ((!this.roles.includes(c.role) && !errand) || c.frozen) continue;
         const dx = c.position.x - this.position.x;
         const dz = c.position.z - this.position.z;
         if (dx * dx + dz * dz > this.radius * this.radius) { this.timers.delete(c); continue; }

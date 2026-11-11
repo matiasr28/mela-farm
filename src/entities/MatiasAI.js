@@ -345,6 +345,8 @@ export class MatiasAI {
     const piles = shops.map((s) => s.cashPile);
     if (this.world.truck) piles.push(this.world.truck.cashPile);
     if (this.world.restaurant) piles.push(this.world.restaurant.cashPile);
+    for (const x of [this.world.train, this.world.ship, this.world.hostel]) if (x) piles.push(x.cashPile);
+    if (this.world.balloonCash) piles.push(this.world.balloonCash);
     const p = this.game.player.position;
     return piles
       .filter((c) => c.landedCount >= 4 && distXZ2(c.center, p) > 4 * 4)

@@ -11,6 +11,23 @@ import { Missions } from '../systems/Missions.js';
 import { Chatter } from '../systems/Chatter.js';
 import { CONFIG } from '../config.js';
 
+/** Duración de un día completo en segundos de juego. */
+const DAY_LENGTH = 480;
+const _c1 = new THREE.Color();
+const _c2 = new THREE.Color();
+const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+/** Momentos del día (t = fracción del ciclo). Entre uno y otro se mezcla suave. */
+const DAY_KEYS = [
+  { t: 0.0, icon: '☀️', sky: '#8fd6f5', hemi: '#fffaf0', ground: '#b08850', hemiI: 1.7, sun: '#fff0d6', sunI: 2.3, dir: V3(10, 22, 6) },
+  { t: 0.45, icon: '☀️', sky: '#8fd6f5', hemi: '#fffaf0', ground: '#b08850', hemiI: 1.7, sun: '#fff0d6', sunI: 2.3, dir: V3(10, 22, 6) },
+  { t: 0.55, icon: '🌇', sky: '#f4a46a', hemi: '#ffd2a8', ground: '#8a5a3a', hemiI: 1.35, sun: '#ff9a55', sunI: 1.9, dir: V3(20, 9, 4) },
+  { t: 0.66, icon: '🌇', sky: '#e98a6a', hemi: '#ffc9a8', ground: '#7a4e3a', hemiI: 1.2, sun: '#ff8a50', sunI: 1.6, dir: V3(22, 7, 2) },
+  { t: 0.74, icon: '🌙', sky: '#1d2a55', hemi: '#8796d6', ground: '#2e2c48', hemiI: 0.85, sun: '#a9b8ff', sunI: 0.6, dir: V3(-8, 20, 8) },
+  { t: 0.9, icon: '🌙', sky: '#1d2a55', hemi: '#8796d6', ground: '#2e2c48', hemiI: 0.85, sun: '#a9b8ff', sunI: 0.6, dir: V3(-8, 20, 8) },
+  { t: 0.96, icon: '🌅', sky: '#f2b8c6', hemi: '#ffe0e8', ground: '#a07a60', hemiI: 1.3, sun: '#ffc0a0', sunI: 1.6, dir: V3(-18, 10, 6) },
+  { t: 1.0, icon: '☀️', sky: '#8fd6f5', hemi: '#fffaf0', ground: '#b08850', hemiI: 1.7, sun: '#fff0d6', sunI: 2.3, dir: V3(10, 22, 6) },
+];
+
 export const IS_TOUCH = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
 
 export class Game {
@@ -39,7 +56,8 @@ export class Game {
     this.focus = new THREE.Vector3();
 
     // ---------- Luces cálidas ----------
-    this.scene.add(new THREE.HemisphereLight('#fffaf0', '#b08850', 1.7));
+    this.hemi = new THREE.HemisphereLight('#fffaf0', '#b08850', 1.7);
+    this.scene.add(this.hemi);
     this.sun = new THREE.DirectionalLight('#fff0d6', 2.3);
     this.sun.castShadow = true;
     const sm = IS_TOUCH ? 1024 : 2048;
@@ -49,6 +67,7 @@ export class Game {
     this.sun.shadow.bias = -0.0005;
     this.sun.shadow.normalBias = 0.03;
     this.sun.shadow.radius = 3;
+    this.sunOffset = new THREE.Vector3(10, 22, 6); // dirección del sol (cambia con la hora)
     this.scene.add(this.sun, this.sun.target);
 
     // ---------- Sistemas ----------
@@ -150,10 +169,15 @@ export class Game {
   speedMult() {
     return (this.boostLeft('speed') > 0 ? 1.35 : 1) * (this.boostLeft('love') > 0 ? 1.25 : 1);
   }
-  /** Multiplicador de lo que pagan clientes y camión: granja × Contabilidad × 🏷️ promo × 💕 enamorada. */
+  /** Multiplicador de lo que pagan clientes y camión: granja × Contabilidad × 🏷️ promo × 💕 enamorada × 🎆 fiesta. */
   saleMult() {
     const acc = 1 + 0.05 * (this.world.upgrades?.accounting ?? 0);
-    return this.incomeMult * acc * (this.boostLeft('sales') > 0 ? 1.25 : 1) * (this.boostLeft('love') > 0 ? 1.3 : 1);
+    return this.incomeMult * acc * (this.boostLeft('sales') > 0 ? 1.25 : 1) * (this.boostLeft('love') > 0 ? 1.3 : 1)
+      * (this.boostLeft('fiesta') > 0 ? 1.5 : 1);
+  }
+  /** Cuántos clientes llegan a las tiendas: 🎻 peña (×2) y 🌳 plaza del pueblo (×1,3). */
+  shopSpawnMult() {
+    return (this.boostLeft('pena') > 0 ? 2 : 1) * (this.world.plazaOn ? 1.3 : 1);
   }
 
   /** Bus de eventos simple (harvest, produce, sell, truck, earn, unlock) → misiones. */
@@ -162,10 +186,10 @@ export class Game {
   }
 
   /** Pantalla de "¡Nueva granja!" tras el prestigio; recarga con la granja nueva. */
-  showLevelUp(level, newItems = []) {
+  showLevelUp(level, newItems = [], nextMult = null) {
     this.audio.play('levelup');
     this.fx.burst(this.player.position.clone().setY(1.5), 60);
-    const mult = Math.round((this.incomeMult + 0.5) * 100) / 100;
+    const mult = Math.round((nextMult ?? this.incomeMult + 0.5) * 100) / 100;
     const extra = newItems.map((t) => `<li>✨ ${t}</li>`).join('');
     const el = document.createElement('div');
     el.id = 'levelup';
@@ -222,7 +246,8 @@ export class Game {
 
     this.fx.update(dt);
     this.hud.update(dt);
-    this.hud.setBoosts(this.boostLeft('speed'), this.boostLeft('sales'), this.boostLeft('love'));
+    this.hud.setBoosts(this.boostLeft('speed'), this.boostLeft('sales'), this.boostLeft('love'), this.boostLeft('pena'), this.boostLeft('fiesta'), this.boostLeft('horse'));
+    this.updateDayCycle();
     this.updateCamera(dt);
 
     this.saveTimer -= dt;
@@ -250,6 +275,32 @@ export class Game {
     }
   }
 
+  /**
+   * Ciclo del día (DAY_LENGTH segundos): día → tarde → noche → amanecer → día.
+   * Cambia el cielo, la niebla, la luz ambiente y el sol (color, fuerza y ángulo).
+   */
+  updateDayCycle() {
+    const t = (this.time / DAY_LENGTH) % 1;
+    let a = DAY_KEYS[DAY_KEYS.length - 1];
+    let b = DAY_KEYS[0];
+    for (let i = 0; i < DAY_KEYS.length - 1; i++) {
+      if (t >= DAY_KEYS[i].t && t < DAY_KEYS[i + 1].t) { a = DAY_KEYS[i]; b = DAY_KEYS[i + 1]; break; }
+    }
+    const span = b.t - a.t;
+    const u = span > 0 ? (t - a.t) / span : 0;
+    const k = u * u * (3 - 2 * u); // transición suave
+    const mix = (key) => _c1.set(a[key]).lerp(_c2.set(b[key]), k);
+    this.scene.background.copy(mix('sky'));
+    this.scene.fog.color.copy(this.scene.background);
+    this.hemi.color.copy(mix('hemi'));
+    this.hemi.groundColor.copy(mix('ground'));
+    this.hemi.intensity = a.hemiI + (b.hemiI - a.hemiI) * k;
+    this.sun.color.copy(mix('sun'));
+    this.sun.intensity = a.sunI + (b.sunI - a.sunI) * k;
+    this.sunOffset.lerpVectors(a.dir, b.dir, k);
+    this.hud.setDayIcon(k < 0.5 ? a.icon : b.icon);
+  }
+
   /** Cámara que sigue al jugador suavemente; también mueve el sol para sombras nítidas. */
   updateCamera(dt, snap = false) {
     const p = this.player.position;
@@ -262,7 +313,8 @@ export class Game {
     const o = this.cameraOffset;
     this.camera.position.set(this.focus.x + o.x * zoom, o.y * zoom, this.focus.z + o.z * zoom);
     this.camera.lookAt(this.focus.x, 0.8, this.focus.z);
-    this.sun.position.set(this.focus.x + 10, 22, this.focus.z + 6);
+    const so = this.sunOffset;
+    this.sun.position.set(this.focus.x + so.x, so.y, this.focus.z + so.z);
     this.sun.target.position.set(this.focus.x, 0, this.focus.z);
   }
 

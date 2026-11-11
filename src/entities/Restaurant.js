@@ -2,6 +2,8 @@
 // un plato; la cocina cocina SOLO lo que se pidió (con lo que haya en la despensa) y lo deja en el
 // pasaplatos; Mela o el mozo lo llevan a la mesa. Si el plato llega rápido, dejan propina.
 //   Despensa: 🥐 🥛 🍞 🧀 🐟 🎃 🎂 🍦   →   🥞 🥪 🍲 🍨
+//   Granja 13: 🍝 + 🍅 → 🍜 · Granja 14: 🥩 + 🍅 → 🍖 · Granja 19: 🍫 + 🍮 → 🍰
+//   Granja 17: si hay 🍷 en la despensa, cada plato sale con maridaje (+40%).
 import * as THREE from 'three';
 import { Character } from './Character.js';
 import { createWorkshop, createTable, createDeck, createItem, mat, ITEMS } from '../models/Models.js';
@@ -18,8 +20,14 @@ export const DISHES = {
   sandwich: { bread: 1, cheese: 1 },
   stew: { fish: 1, pumpkin: 1 },
   dessert: { cake: 1, icecream: 1 },
+  tallarines: { pasta: 1, tomato: 1 },
+  asado: { beef: 1, tomato: 1 },
+  chocotorta: { chocolate: 1, dulce: 1 },
 };
-const PANTRY = ['croissant', 'milk', 'bread', 'cheese', 'fish', 'pumpkin', 'cake', 'icecream'];
+/** Granja desde la que aparece cada plato en la carta (los demás desde la 10). */
+const DISH_LEVEL = { tallarines: 13, asado: 14, chocotorta: 19 };
+const WINE_LEVEL = 17; // maridaje
+const BASE_PANTRY = ['croissant', 'milk', 'bread', 'cheese', 'fish', 'pumpkin', 'cake', 'icecream'];
 
 const V = (x, z) => new THREE.Vector3(x, 0, z);
 const SHIRTS = ['#3fa7e0', '#4cb860', '#ffb703', '#e76f51', '#a29bfe', '#ffffff', '#ff8fab', '#e8503f'];
@@ -124,6 +132,14 @@ export class Restaurant {
     this.game = game;
     this.world = world;
     this.position = position.clone();
+    // Carta y despensa según la granja (los platos nuevos se suman desde su granja)
+    const lvl = world.farmLevel;
+    this.dishes = Object.keys(DISHES).filter((d) => (DISH_LEVEL[d] ?? 10) <= lvl);
+    const PANTRY = [...BASE_PANTRY];
+    for (const d of this.dishes) for (const t of Object.keys(DISHES[d])) if (!PANTRY.includes(t)) PANTRY.push(t);
+    if (lvl >= WINE_LEVEL) PANTRY.push('wine');
+    this.pantryTypes = PANTRY;
+    this.pairings = 0;
     this.recipe = { ...Object.fromEntries(PANTRY.map((t) => [t, 1])) }; // para la Gerencia (sinkOf)
     this.speedMult = 1;
     this.spawnMult = 1;   // la Fuente atrae más clientes
@@ -151,24 +167,29 @@ export class Restaurant {
     game.scene.add(sign.sprite);
     this.door = P.clone().add(V(0, 2.2)).setY(0.8);
 
-    // Despensa: una pila por ingrediente
+    // Despensa: una pila por ingrediente (en dos filas cuando la carta crece)
     const pantryX = P.x - 5.4;
     const pantryZ = P.z + 3.6;
-    const table = bakeGroup(createTable(PANTRY.length * 0.6 + 0.3));
+    const twoRows = PANTRY.length > 8;
+    const pCols = twoRows ? Math.ceil(PANTRY.length / 2) : PANTRY.length;
+    const pantryW = pCols * 0.6 + 0.3;
+    const table = bakeGroup(createTable(pantryW));
     table.position.set(pantryX, 0, pantryZ);
     game.scene.add(table);
     this.inputs = {};
     PANTRY.forEach((t, i) => {
+      const col = i % pCols;
+      const row = Math.floor(i / pCols);
       this.inputs[t] = new Pile(game, {
-        position: V(pantryX + (i - (PANTRY.length - 1) / 2) * 0.6, pantryZ).setY(0.56), type: t,
-        cols: 1, rows: 2, spacing: [0.5, 0.34], max: 8,
+        position: V(pantryX + (col - (pCols - 1) / 2) * 0.6, pantryZ + (twoRows ? (row ? 0.2 : -0.2) : 0)).setY(0.56), type: t,
+        cols: 1, rows: twoRows ? 1 : 2, spacing: [0.5, 0.34], max: 8,
       });
     });
-    game.obstacles.push({ minX: pantryX - 2.6, maxX: pantryX + 2.6, minZ: pantryZ - 0.45, maxZ: pantryZ + 0.45 });
+    game.obstacles.push({ minX: pantryX - pantryW / 2 - 0.1, maxX: pantryX + pantryW / 2 + 0.1, minZ: pantryZ - 0.45, maxZ: pantryZ + 0.45 });
     this.dropZone = new TransferZone(game, {
       position: V(pantryX, pantryZ + 1.6), mode: 'drop', types: PANTRY,
       target: { canAccept: (t) => !!this.inputs[t]?.canAccept(t), receive: (t, m) => this.inputs[t].receive(t, m) },
-      roles: ['player', 'baker'],
+      roles: ['player', 'baker', 'farmer'], // el huertero trae los tomates directo a la despensa
     });
 
     // Pasaplatos: un lugar por plato
@@ -177,8 +198,15 @@ export class Restaurant {
     pass.position.set(passX, 0, pantryZ);
     game.scene.add(pass);
     this.pass = {};
-    Object.keys(DISHES).forEach((t, i) => {
-      this.pass[t] = new Pile(game, { position: V(passX + (i - 1.5) * 0.62, pantryZ).setY(0.56), type: t, cols: 1, rows: 2, spacing: [0.5, 0.34], max: 4 });
+    const passRows = this.dishes.length > 4;
+    const passCols = passRows ? Math.ceil(this.dishes.length / 2) : 4;
+    this.dishes.forEach((t, i) => {
+      const col = i % passCols;
+      const row = Math.floor(i / passCols);
+      this.pass[t] = new Pile(game, {
+        position: V(passX + (col - (passCols - 1) / 2) * 0.62, pantryZ + (passRows ? (row ? 0.2 : -0.2) : 0)).setY(0.56), type: t,
+        cols: 1, rows: passRows ? 1 : 2, spacing: [0.5, 0.34], max: 4,
+      });
     });
     game.obstacles.push({ minX: passX - 1.4, maxX: passX + 1.4, minZ: pantryZ - 0.45, maxZ: pantryZ + 0.45 });
     const passes = Object.values(this.pass);
@@ -300,7 +328,10 @@ export class Restaurant {
    * de la carta: eso es lo que le toca resolver a Mela.
    */
   chooseDish() {
-    const all = Object.keys(DISHES);
+    // Sólo platos cuyos ingredientes la granja ya produce
+    const f = this.game.flags;
+    let all = this.dishes.filter((d) => Object.keys(DISHES[d]).every((t) => f[t]));
+    if (!all.length) all = this.dishes.slice(0, 4);
     const possible = all.filter((type) => this.pass[type].count > 0 || Object.entries(DISHES[type]).every(([t, n]) => {
       // Ingredientes en la despensa, descontando lo que ya reservaron otros comensales esperando
       const reserved = this.diners.filter((d) => (d.state === 'walk' || d.state === 'wait') && DISHES[d.want][t]).length;
@@ -380,10 +411,17 @@ export class Restaurant {
   pay(d) {
     const tip = d.servedAfter < 12 ? 0.5 : d.servedAfter < 25 ? 0.25 : 0;
     const base = ITEMS[d.want].price;
-    const amount = Math.round(base * (1 + tip) * this.game.saleMult());
+    // Maridaje (Granja 17): si hay vino en la despensa, el plato sale con una copa (+40%)
+    const wine = this.inputs.wine?.hasLanded() ? this.inputs.wine.give() : null;
+    if (wine) {
+      this.game.fx.fly(wine.mesh, (out) => out.copy(d.table.pos).setY(0.9), { duration: 0.35, onDone: (m) => this.game.fx.popOut(m) });
+      this.pairings++;
+    }
+    const amount = Math.round(base * (1 + tip + (wine ? 0.4 : 0)) * this.game.saleMult());
     const from = d.position.clone().setY(1.4);
     if (this.autoBank) { this.game.addMoney(amount); this.game.emit('earn', { amount }); } else this.cashPile.addMoney(amount, from);
-    this.game.fx.floatText(tip ? `+$${amount} ⭐` : `+$${amount}`, from.clone().setY(2.6), tip ? '#ffe066' : '#9bff8a');
+    const mark = `${tip ? ' ⭐' : ''}${wine ? ' 🍷' : ''}`;
+    this.game.fx.floatText(`+$${amount}${mark}`, from.clone().setY(2.6), mark ? '#ffe066' : '#9bff8a');
     this.game.audio.play('register', { pos: from });
     this.game.emit('sell', { type: d.want, n: 1 });
     this.sales++;
